@@ -19,6 +19,23 @@ constexpr std::int32_t SEARCH_MODE_OTHER_PENALTY = 1700;
 // Static memory pool
 ObjectPool<Node> Lattice::node_pool_;
 
+// Helper function to count Unicode characters in UTF-8 string
+static std::int32_t count_utf8_chars(std::string_view str) {
+    std::int32_t char_count = 0;
+    std::int32_t byte_pos = 0;
+    std::int32_t str_len = static_cast<std::int32_t>(str.length());
+    
+    while (byte_pos < str_len) {
+        UChar32 codepoint;
+        U8_NEXT(reinterpret_cast<const uint8_t*>(str.data()), byte_pos, str_len, codepoint);
+        if (codepoint >= 0) {
+            char_count++;
+        }
+    }
+    
+    return char_count;
+}
+
 Lattice::Lattice(std::shared_ptr<dict::Dict> dictionary,
                 std::shared_ptr<dict::UserDict> user_dictionary)
     : dict_(std::move(dictionary)), user_dict_(std::move(user_dictionary)) {}
@@ -30,15 +47,7 @@ void Lattice::build(std::string_view input) {
     clear();
     
     // Count Unicode characters for proper sizing
-    UErrorCode status = U_ZERO_ERROR;
-    std::int32_t char_count = 0;
-    u_strFromUTF8(nullptr, 0, &char_count, input.data(), 
-                 static_cast<std::int32_t>(input.length()), &status);
-    
-    if (!U_SUCCESS(status) && status != U_BUFFER_OVERFLOW_ERROR) {
-        // Fallback to byte count
-        char_count = static_cast<std::int32_t>(input.length());
-    }
+    std::int32_t char_count = count_utf8_chars(input);
     
     // Resize node list
     node_list_.resize(char_count + 2);
@@ -86,16 +95,8 @@ void Lattice::build(std::string_view input) {
                     if (length > longest_match_bytes) {
                         longest_match_bytes = length;
                         // Count characters in this match
-                        UErrorCode status = U_ZERO_ERROR;
-                        std::int32_t char_count = 0;
-                        std::string match_surface = input_.substr(char_start_byte, length);
-                        u_strFromUTF8(nullptr, 0, &char_count, match_surface.c_str(),
-                                     static_cast<std::int32_t>(match_surface.length()), &status);
-                        if (U_SUCCESS(status) || status == U_BUFFER_OVERFLOW_ERROR) {
-                            longest_match_chars = char_count;
-                        } else {
-                            longest_match_chars = 1; // fallback
-                        }
+                        std::string_view match_surface(input_.data() + char_start_byte, length);
+                        longest_match_chars = count_utf8_chars(match_surface);
                     }
                 }
             );
@@ -124,16 +125,8 @@ void Lattice::build(std::string_view input) {
                 if (length > longest_match_bytes) {
                     longest_match_bytes = length;
                     // Count characters in this match
-                    UErrorCode status = U_ZERO_ERROR;
-                    std::int32_t char_count = 0;
-                    std::string match_surface = input_.substr(char_start_byte, length);
-                    u_strFromUTF8(nullptr, 0, &char_count, match_surface.c_str(),
-                                 static_cast<std::int32_t>(match_surface.length()), &status);
-                    if (U_SUCCESS(status) || status == U_BUFFER_OVERFLOW_ERROR) {
-                        longest_match_chars = char_count;
-                    } else {
-                        longest_match_chars = 1; // fallback
-                    }
+                    std::string_view match_surface(input_.data() + char_start_byte, length);
+                    longest_match_chars = count_utf8_chars(match_surface);
                 }
             }
         );
@@ -245,16 +238,9 @@ void Lattice::add_node(std::int32_t pos, std::int32_t id, std::int32_t position,
     // Calculate target position
     std::int32_t target_pos = pos;
     if (!node->surface().empty()) {
-        // Count characters in surface
-        UErrorCode status = U_ZERO_ERROR;
-        std::int32_t char_count = 0;
-        u_strFromUTF8(nullptr, 0, &char_count, node->surface().c_str(),
-                     static_cast<std::int32_t>(node->surface().length()), &status);
-        if (U_SUCCESS(status) || status == U_BUFFER_OVERFLOW_ERROR) {
-            target_pos = pos + char_count;
-        } else {
-            target_pos = pos + static_cast<std::int32_t>(node->surface().length());
-        }
+        // Count characters in surface using optimized function
+        std::int32_t char_count = count_utf8_chars(node->surface());
+        target_pos = pos + char_count;
     }
     
     if (target_pos < static_cast<std::int32_t>(node_list_.size())) {
@@ -334,53 +320,30 @@ void Lattice::backward(LatticeMode mode) {
             const std::string& surface = current->surface();
             std::vector<Node*> char_nodes;
             
-            // Use ICU to properly iterate characters
-            UErrorCode status = U_ZERO_ERROR;
-            UChar* utf16_str = nullptr;
-            std::int32_t utf16_len = 0;
+            // Iterate directly over UTF-8 string without conversion
+            std::int32_t byte_pos = 0;
+            std::int32_t char_index = 0;
+            std::int32_t surface_len = static_cast<std::int32_t>(surface.length());
             
-            u_strFromUTF8(nullptr, 0, &utf16_len, surface.c_str(),
-                         static_cast<std::int32_t>(surface.length()), &status);
-            
-            if (U_SUCCESS(status) || status == U_BUFFER_OVERFLOW_ERROR) {
-                status = U_ZERO_ERROR;
-                utf16_str = new UChar[utf16_len + 1];
-                u_strFromUTF8(utf16_str, utf16_len + 1, nullptr, surface.c_str(),
-                             static_cast<std::int32_t>(surface.length()), &status);
+            while (byte_pos < surface_len) {
+                UChar32 codepoint;
+                std::int32_t char_start_byte = byte_pos;
+                U8_NEXT(reinterpret_cast<const uint8_t*>(surface.data()), byte_pos, surface_len, codepoint);
                 
-                if (U_SUCCESS(status)) {
-                    std::int32_t char_index = 0;
-                    std::int32_t byte_offset = 0;
+                if (codepoint >= 0) {
+                    std::int32_t char_byte_len = byte_pos - char_start_byte;
                     
-                    for (std::int32_t i = 0; i < utf16_len; ) {
-                        UChar32 codepoint;
-                        U16_NEXT(utf16_str, i, utf16_len, codepoint);
-                        
-                        // Convert back to UTF-8
-                        char utf8_char[U8_MAX_LENGTH + 1];
-                        std::int32_t utf8_len = 0;
-                        UBool is_error = false;
-                        U8_APPEND(reinterpret_cast<uint8_t*>(utf8_char), utf8_len,
-                                 U8_MAX_LENGTH, codepoint, is_error);
-                        utf8_char[utf8_len] = '\0';
-                        
-                        if (!is_error) {
-                            Node* char_node = node_pool_.get();
-                            char_node->set_id(current->id());
-                            char_node->set_start(current->start() + char_index);
-                            char_node->set_class(NodeClass::Dummy);
-                            char_node->set_surface(std::string(utf8_char, utf8_len));
-                            char_node->set_position(current->position() + byte_offset);
-                            
-                            char_nodes.push_back(char_node);
-                        }
-                        
-                        char_index++;
-                        byte_offset += utf8_len;
-                    }
+                    Node* char_node = node_pool_.get();
+                    char_node->set_id(current->id());
+                    char_node->set_start(current->start() + char_index);
+                    char_node->set_class(NodeClass::Dummy);
+                    char_node->set_surface(surface.substr(char_start_byte, char_byte_len));
+                    char_node->set_position(current->position() + char_start_byte);
+                    
+                    char_nodes.push_back(char_node);
                 }
                 
-                delete[] utf16_str;
+                char_index++;
             }
             
             // Add character nodes in reverse order
@@ -527,16 +490,8 @@ std::int32_t Lattice::additional_cost(const Node* node) const {
         return 0;
     }
     
-    // Count Unicode characters
-    UErrorCode status = U_ZERO_ERROR;
-    std::int32_t char_count = 0;
-    u_strFromUTF8(nullptr, 0, &char_count, node->surface().c_str(),
-                 static_cast<std::int32_t>(node->surface().length()), &status);
-    
-    if (!U_SUCCESS(status) && status != U_BUFFER_OVERFLOW_ERROR) {
-        // Fallback to byte count
-        char_count = static_cast<std::int32_t>(node->surface().length());
-    }
+    // Count Unicode characters using optimized function
+    std::int32_t char_count = count_utf8_chars(node->surface());
     
     if (char_count > SEARCH_MODE_KANJI_LENGTH && is_kanji_only(node->surface())) {
         return (char_count - SEARCH_MODE_KANJI_LENGTH) * SEARCH_MODE_KANJI_PENALTY;
@@ -550,40 +505,32 @@ std::int32_t Lattice::additional_cost(const Node* node) const {
 }
 
 bool Lattice::is_kanji_only(std::string_view str) const {
-    UErrorCode status = U_ZERO_ERROR;
-    UChar* utf16_str = nullptr;
-    std::int32_t utf16_len = 0;
-    
-    u_strFromUTF8(nullptr, 0, &utf16_len, str.data(),
-                 static_cast<std::int32_t>(str.length()), &status);
-    
-    if (!U_SUCCESS(status) && status != U_BUFFER_OVERFLOW_ERROR) {
+    if (str.empty()) {
         return false;
     }
     
-    status = U_ZERO_ERROR;
-    utf16_str = new UChar[utf16_len + 1];
-    u_strFromUTF8(utf16_str, utf16_len + 1, nullptr, str.data(),
-                 static_cast<std::int32_t>(str.length()), &status);
+    // Iterate directly over UTF-8 string without conversion
+    std::int32_t byte_pos = 0;
+    std::int32_t str_len = static_cast<std::int32_t>(str.length());
+    bool found_char = false;
     
-    if (!U_SUCCESS(status)) {
-        delete[] utf16_str;
-        return false;
-    }
-    
-    bool is_kanji = true;
-    for (std::int32_t i = 0; i < utf16_len; ) {
+    while (byte_pos < str_len) {
         UChar32 codepoint;
-        U16_NEXT(utf16_str, i, utf16_len, codepoint);
+        U8_NEXT(reinterpret_cast<const uint8_t*>(str.data()), byte_pos, str_len, codepoint);
+        
+        if (codepoint < 0) {
+            // Invalid UTF-8
+            return false;
+        }
         
         if (!u_hasBinaryProperty(codepoint, UCHAR_IDEOGRAPHIC)) {
-            is_kanji = false;
-            break;
+            return false;
         }
+        
+        found_char = true;
     }
     
-    delete[] utf16_str;
-    return is_kanji && utf16_len > 0;
+    return found_char;
 }
 
 std::string Lattice::pos_feature(const Node* node) const {

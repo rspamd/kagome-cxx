@@ -156,6 +156,24 @@ target_link_libraries(kagome_simple_test PRIVATE
     kagome_cpp
 )
 
+# Create the deep debug executable
+add_executable(kagome_deep_debug
+    src/deep_debug.cpp
+)
+
+target_link_libraries(kagome_deep_debug PRIVATE
+    kagome_cpp
+)
+
+# Create the lattice fix test executable
+add_executable(kagome_lattice_fix_test
+    src/lattice_fix_test.cpp
+)
+
+target_link_libraries(kagome_lattice_fix_test PRIVATE
+    kagome_cpp
+)
+
 # Tests
 enable_testing()
 add_executable(kagome_tests

@@ -54,9 +54,9 @@ void Lattice::build(std::string_view input) {
     
     while (byte_pos < static_cast<std::int32_t>(input.length())) {
         UChar32 current_char;
-        UErrorCode char_status = U_ZERO_ERROR;
         
         // Extract Unicode character
+        std::int32_t char_start_byte = byte_pos;
         U8_NEXT(reinterpret_cast<const uint8_t*>(input.data()), byte_pos,
                 static_cast<std::int32_t>(input.length()), current_char);
         
@@ -66,96 +66,145 @@ void Lattice::build(std::string_view input) {
         }
         
         bool any_matches = false;
+        std::int32_t longest_match_bytes = 0;
+        std::int32_t longest_match_chars = 0;
         
         // 1. Try user dictionary first
         if (user_dict_) {
-            std::string_view remaining_input(input.data() + byte_pos - U8_LENGTH(current_char),
-                                           input.length() - (byte_pos - U8_LENGTH(current_char)));
+            std::string_view remaining_input(input.data() + char_start_byte,
+                                           input.length() - char_start_byte);
             
             user_dict_->index.common_prefix_search_callback(
                 remaining_input,
-                [this, char_pos, byte_pos, &any_matches, current_char](std::int32_t id, std::int32_t length) {
-                    std::string surface(input_.substr(byte_pos - U8_LENGTH(current_char), length));
-                    add_node(char_pos, id, byte_pos - U8_LENGTH(current_char), char_pos, 
+                [this, char_pos, char_start_byte, &any_matches, &longest_match_bytes, &longest_match_chars](std::int32_t id, std::int32_t length) {
+                    std::string surface(input_.substr(char_start_byte, length));
+                    add_node(char_pos, id, char_start_byte, char_pos, 
                             NodeClass::User, std::move(surface));
                     any_matches = true;
+                    
+                    // Track longest match
+                    if (length > longest_match_bytes) {
+                        longest_match_bytes = length;
+                        // Count characters in this match
+                        UErrorCode status = U_ZERO_ERROR;
+                        std::int32_t char_count = 0;
+                        std::string match_surface = input_.substr(char_start_byte, length);
+                        u_strFromUTF8(nullptr, 0, &char_count, match_surface.c_str(),
+                                     static_cast<std::int32_t>(match_surface.length()), &status);
+                        if (U_SUCCESS(status) || status == U_BUFFER_OVERFLOW_ERROR) {
+                            longest_match_chars = char_count;
+                        } else {
+                            longest_match_chars = 1; // fallback
+                        }
+                    }
                 }
             );
         }
         
         if (any_matches) {
-            char_pos++;
+            // Advance by the longest match found
+            char_pos += longest_match_chars;
+            byte_pos = char_start_byte + longest_match_bytes;
             continue;
         }
         
         // 2. Try system dictionary
-        std::string_view remaining_input(input.data() + byte_pos - U8_LENGTH(current_char),
-                                       input.length() - (byte_pos - U8_LENGTH(current_char)));
+        std::string_view remaining_input(input.data() + char_start_byte,
+                                       input.length() - char_start_byte);
         
         dict_->index.common_prefix_search_callback(
             std::string(remaining_input),
-            [this, char_pos, byte_pos, &any_matches, current_char](std::int32_t id, std::int32_t length) {
-                std::string surface(input_.substr(byte_pos - U8_LENGTH(current_char), length));
-                add_node(char_pos, id, byte_pos - U8_LENGTH(current_char), char_pos,
+            [this, char_pos, char_start_byte, &any_matches, &longest_match_bytes, &longest_match_chars](std::int32_t id, std::int32_t length) {
+                std::string surface(input_.substr(char_start_byte, length));
+                add_node(char_pos, id, char_start_byte, char_pos,
                         NodeClass::Known, std::move(surface));
                 any_matches = true;
+                
+                // Track longest match
+                if (length > longest_match_bytes) {
+                    longest_match_bytes = length;
+                    // Count characters in this match
+                    UErrorCode status = U_ZERO_ERROR;
+                    std::int32_t char_count = 0;
+                    std::string match_surface = input_.substr(char_start_byte, length);
+                    u_strFromUTF8(nullptr, 0, &char_count, match_surface.c_str(),
+                                 static_cast<std::int32_t>(match_surface.length()), &status);
+                    if (U_SUCCESS(status) || status == U_BUFFER_OVERFLOW_ERROR) {
+                        longest_match_chars = char_count;
+                    } else {
+                        longest_match_chars = 1; // fallback
+                    }
+                }
             }
         );
         
-        // 3. Handle unknown words
+        // If we found dictionary matches, advance and continue
+        if (any_matches) {
+            // Advance by the longest match found
+            char_pos += longest_match_chars;
+            byte_pos = char_start_byte + longest_match_bytes;
+            continue;
+        }
+        
+        // 3. Handle unknown words (only if no dictionary matches found)
         dict::CharacterCategory char_category = dict_->character_category(current_char);
         
-        if (!any_matches || dict_->should_invoke(char_category)) {
-            std::int32_t char_start_byte = byte_pos - U8_LENGTH(current_char);
-            std::int32_t end_byte = byte_pos;
-            std::int32_t unknown_word_len = 1;
-            
-            // Group consecutive characters of same category if needed
-            if (dict_->should_group(char_category)) {
-                while (byte_pos < static_cast<std::int32_t>(input.length()) && 
-                       unknown_word_len < MAXIMUM_UNKNOWN_WORD_LENGTH) {
-                    UChar32 next_char;
-                    std::int32_t next_byte_pos = byte_pos;
-                    U8_NEXT(reinterpret_cast<const uint8_t*>(input.data()), next_byte_pos,
-                           static_cast<std::int32_t>(input.length()), next_char);
-                    
-                    if (next_char < 0 || dict_->character_category(next_char) != char_category) {
-                        break;
-                    }
-                    
-                    byte_pos = next_byte_pos;
-                    end_byte = byte_pos;
-                    unknown_word_len++;
-                }
-            }
-            
-            // Add unknown word entries
-            if (static_cast<std::size_t>(char_category) < dict_->unk_dict.index.size()) {
-                std::int32_t base_id = dict_->unk_dict.index[static_cast<std::size_t>(char_category)];
-                std::int32_t dup_count = 1;
+        std::int32_t end_byte = byte_pos;
+        std::int32_t unknown_word_len = 1;
+        
+        // Group consecutive characters of same category if needed
+        if (dict_->should_group(char_category)) {
+            while (byte_pos < static_cast<std::int32_t>(input.length()) && 
+                   unknown_word_len < MAXIMUM_UNKNOWN_WORD_LENGTH) {
+                UChar32 next_char;
+                std::int32_t next_byte_pos = byte_pos;
+                U8_NEXT(reinterpret_cast<const uint8_t*>(input.data()), next_byte_pos,
+                       static_cast<std::int32_t>(input.length()), next_char);
                 
-                if (static_cast<std::size_t>(char_category) < dict_->unk_dict.index_dup.size()) {
-                    dup_count = dict_->unk_dict.index_dup[static_cast<std::size_t>(char_category)] + 1;
+                if (next_char < 0 || dict_->character_category(next_char) != char_category) {
+                    break;
                 }
                 
-                for (std::int32_t i = 0; i < dup_count; ++i) {
-                    // Add both full word and truncated version if multi-character
-                    if (unknown_word_len > 1) {
-                        // Add truncated version (all but last character)
-                        std::string truncated_surface = input_.substr(char_start_byte, end_byte - U8_LENGTH(current_char) - char_start_byte);
-                        add_node(char_pos, base_id + i, char_start_byte, char_pos,
-                                NodeClass::Unknown, truncated_surface);
-                    }
-                    
-                    // Add full word
-                    std::string full_surface = input_.substr(char_start_byte, end_byte - char_start_byte);
-                    add_node(char_pos, base_id + i, char_start_byte, char_pos,
-                            NodeClass::Unknown, std::move(full_surface));
-                }
+                byte_pos = next_byte_pos;
+                end_byte = byte_pos;
+                unknown_word_len++;
             }
         }
         
-        char_pos++;
+        // Add unknown word entries
+        if (static_cast<std::size_t>(char_category) < dict_->unk_dict.index.size()) {
+            std::int32_t base_id = dict_->unk_dict.index[static_cast<std::size_t>(char_category)];
+            std::int32_t dup_count = 1;
+            
+            if (static_cast<std::size_t>(char_category) < dict_->unk_dict.index_dup.size()) {
+                dup_count = dict_->unk_dict.index_dup[static_cast<std::size_t>(char_category)] + 1;
+            }
+            
+            for (std::int32_t i = 0; i < dup_count; ++i) {
+                // Add both full word and truncated version if multi-character
+                if (unknown_word_len > 1) {
+                    // Add truncated version (all but last character) 
+                    std::int32_t truncated_end = end_byte;
+                    // Move back one character
+                    std::int32_t temp_pos = end_byte;
+                    U8_BACK_1(reinterpret_cast<const uint8_t*>(input.data()), 0, temp_pos);
+                    truncated_end = temp_pos;
+                    
+                    std::string truncated_surface = input_.substr(char_start_byte, truncated_end - char_start_byte);
+                    add_node(char_pos, base_id + i, char_start_byte, char_pos,
+                            NodeClass::Unknown, truncated_surface);
+                }
+                
+                // Add full word
+                std::string full_surface = input_.substr(char_start_byte, end_byte - char_start_byte);
+                add_node(char_pos, base_id + i, char_start_byte, char_pos,
+                        NodeClass::Unknown, std::move(full_surface));
+            }
+        }
+        
+        // Advance by the number of characters consumed by unknown word
+        char_pos += unknown_word_len;
+        // byte_pos is already advanced by the unknown word processing
     }
 }
 

@@ -116,21 +116,37 @@ std::optional<std::string> Token::feature_at(std::size_t index) const {
 std::vector<std::string> Token::pos() const {
     switch (class_) {
         case TokenClass::Known: {
-            if (!dict_ || static_cast<std::size_t>(id_) >= dict_->pos_table.pos_entries.size()) {
-                return {};
-            }
-            
-            const auto& pos_ids = dict_->pos_table.pos_entries[id_];
-            std::vector<std::string> pos_names;
-            pos_names.reserve(pos_ids.size());
-            
-            for (auto pos_id : pos_ids) {
-                if (pos_id < dict_->pos_table.name_list.size()) {
-                    pos_names.push_back(dict_->pos_table.name_list[pos_id]);
+            // Try POS table lookup first
+            if (dict_ && static_cast<std::size_t>(id_) < dict_->pos_table.pos_entries.size()) {
+                const auto& pos_ids = dict_->pos_table.pos_entries[id_];
+                std::vector<std::string> pos_names;
+                pos_names.reserve(pos_ids.size());
+                
+                for (auto pos_id : pos_ids) {
+                    if (pos_id < dict_->pos_table.name_list.size()) {
+                        pos_names.push_back(dict_->pos_table.name_list[pos_id]);
+                    }
+                }
+                
+                if (!pos_names.empty()) {
+                    return pos_names;
                 }
             }
             
-            return pos_names;
+            // Fallback to direct feature access for IPA dictionary format
+            // In IPA format: [0]=pos1, [1]=pos2, [2]=base_form, [3]=reading, [4]=pronunciation
+            std::vector<std::string> pos_features;
+            auto pos1 = feature_at(0);
+            auto pos2 = feature_at(1);
+            
+            if (pos1 && *pos1 != "*") {
+                pos_features.push_back(*pos1);
+            }
+            if (pos2 && *pos2 != "*") {
+                pos_features.push_back(*pos2);
+            }
+            
+            return pos_features;
         }
         
         case TokenClass::Unknown: {
@@ -220,18 +236,40 @@ std::string Token::inflectional_form() const {
 }
 
 std::string Token::base_form() const {
+    // Try metadata lookup first
     auto result = pickup_from_features(dict::BASE_FORM_INDEX);
-    return result.value_or("*");
+    if (result && *result != "*") {
+        return *result;
+    }
+    
+    // Fallback to direct index access for IPA dictionary format
+    // In IPA format: [0]=pos1, [1]=pos2, [2]=base_form, [3]=reading, [4]=pronunciation
+    auto feature = feature_at(2);
+    return feature.value_or("*");
 }
 
 std::string Token::reading() const {
+    // Try metadata lookup first
     auto result = pickup_from_features(dict::READING_INDEX);
-    return result.value_or("*");
+    if (result && *result != "*") {
+        return *result;
+    }
+    
+    // Fallback to direct index access for IPA dictionary format
+    auto feature = feature_at(3);
+    return feature.value_or("*");
 }
 
 std::string Token::pronunciation() const {
+    // Try metadata lookup first
     auto result = pickup_from_features(dict::PRONUNCIATION_INDEX);
-    return result.value_or("*");
+    if (result && *result != "*") {
+        return *result;
+    }
+    
+    // Fallback to direct index access for IPA dictionary format
+    auto feature = feature_at(4);
+    return feature.value_or("*");
 }
 
 std::optional<UserExtra> Token::user_extra() const {

@@ -101,17 +101,26 @@ std::vector<Token> Tokenizer::analyze_impl(std::string_view input,
     std::vector<Token> tokens;
     tokens.reserve(lattice->output().size());
     
-    for (const auto* node : lattice->output()) {
+    for (std::size_t i = 0; i < lattice->output().size(); ++i) {
+        const auto* node = lattice->output()[i];
         if (config_.omit_bos_eos && node->is_bos_eos()) {
             continue;
         }
         
+        // Calculate end position (start + surface byte length)
+        std::int32_t end_pos = node->start() + static_cast<std::int32_t>(node->surface().length());
+        
+        // Use the full constructor that takes TokenClass explicitly
         tokens.emplace_back(
-            node->surface(),
-            node->id(),
-            node->start(),
-            shared_dict,
-            nullptr
+            static_cast<std::int32_t>(i),                                    // index
+            node->id(),                                                      // id
+            static_cast<TokenClass>(node->node_class()),                     // token_class
+            node->position(),                                                // position  
+            node->start(),                                                   // start
+            end_pos,                                                         // end
+            node->surface(),                                                 // surface
+            shared_dict,                                                     // dict
+            nullptr                                                          // user_dict
         );
     }
     

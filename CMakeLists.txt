@@ -174,6 +174,33 @@ target_link_libraries(kagome_lattice_fix_test PRIVATE
     kagome_cpp
 )
 
+# Create the debug dict sizes executable
+add_executable(kagome_debug_dict_sizes
+    src/debug_dict_sizes.cpp
+)
+
+target_link_libraries(kagome_debug_dict_sizes PRIVATE
+    kagome_cpp
+)
+
+# Create the debug features executable
+add_executable(kagome_debug_features
+    src/debug_features.cpp
+)
+
+target_link_libraries(kagome_debug_features PRIVATE
+    kagome_cpp
+)
+
+# Create the debug metadata executable
+add_executable(kagome_debug_metadata
+    src/debug_metadata.cpp
+)
+
+target_link_libraries(kagome_debug_metadata PRIVATE
+    kagome_cpp
+)
+
 # Tests
 enable_testing()
 add_executable(kagome_tests

@@ -68,16 +68,91 @@ target_compile_options(kagome_cpp PRIVATE
     -Wall -Wextra -Wpedantic
 )
 
+# Create the C API library
+add_library(kagome_c_api STATIC
+    src/c_api/kagome_c_api.cpp
+)
+
+target_include_directories(kagome_c_api PUBLIC
+    include
+    ${ICU_INCLUDE_DIRS}
+)
+
+target_link_libraries(kagome_c_api PUBLIC
+    kagome_cpp
+    ${ICU_LIBRARIES}
+)
+
+target_compile_options(kagome_c_api PRIVATE
+    ${ICU_CFLAGS_OTHER}
+    -Wall -Wextra -Wpedantic
+)
+
+# Create the shared library for Rspamd plugin
+add_library(kagome_rspamd_tokenizer SHARED
+    src/rspamd_plugin/kagome_tokenizer.cpp
+)
+
+target_include_directories(kagome_rspamd_tokenizer PRIVATE
+    include
+)
+
+target_link_libraries(kagome_rspamd_tokenizer PRIVATE
+    kagome_c_api
+    kagome_cpp
+)
+
+# Set proper SONAME and version for the shared library
+set_target_properties(kagome_rspamd_tokenizer PROPERTIES
+    VERSION 1.0.0
+    SOVERSION 1
+    OUTPUT_NAME "kagome_rspamd_tokenizer"
+    PREFIX ""
+)
+
+# Ensure symbols are exported
+target_compile_definitions(kagome_rspamd_tokenizer PRIVATE 
+    -DBUILDING_SHARED_LIBRARY
+)
+
 # Copy dictionary data to build directory
 file(COPY ${CMAKE_SOURCE_DIR}/data/ipa/ipa.dict 
      DESTINATION ${CMAKE_BINARY_DIR}/data/ipa/)
 
-# Create the executable
+# Create the main executable
 add_executable(kagome_main
     src/main.cpp
 )
 
 target_link_libraries(kagome_main PRIVATE
+    kagome_cpp
+)
+
+# Create the test plugin executable
+add_executable(kagome_test_plugin
+    src/test_plugin.cpp
+)
+
+target_link_libraries(kagome_test_plugin PRIVATE
+    kagome_c_api
+    kagome_cpp
+)
+
+# Create the debug tokenizer executable
+add_executable(kagome_debug_tokenizer
+    src/debug_tokenizer.cpp
+)
+
+target_link_libraries(kagome_debug_tokenizer PRIVATE
+    kagome_cpp
+)
+
+# Create the simple test executable
+add_executable(kagome_simple_test
+    src/simple_test.cpp
+)
+
+target_link_libraries(kagome_simple_test PRIVATE
     kagome_cpp
 )
 

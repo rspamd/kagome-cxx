@@ -290,34 +290,69 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
         std::string input(text, len);
         auto tokens = g_tokenizer->tokenize(input);
         
-        // Allocate array for words
-        result->a = static_cast<rspamd_word_t*>(calloc(tokens.size(), sizeof(rspamd_word_t)));
+        // Pre-process to find valid tokens that exist in original text
+        std::vector<std::pair<size_t, const kagome::tokenizer::Token*>> valid_tokens;
+        
+        size_t search_start = 0;
+        for (const auto& token : tokens) {
+            const std::string& surface = token.surface();
+            
+            // Skip empty tokens (BOS/EOS markers)
+            if (surface.empty()) {
+                continue;
+            }
+            
+            // Find this token in the original text starting from search_start
+            bool found = false;
+            for (size_t pos = search_start; pos <= len - surface.length(); pos++) {
+                if (std::memcmp(text + pos, surface.c_str(), surface.length()) == 0) {
+                    // Verify this is a proper boundary (not middle of another character)
+                    // For UTF-8, check that we're at the start of a character
+                    if (pos == 0 || !U8_IS_TRAIL(text[pos])) {
+                        valid_tokens.push_back({pos, &token});
+                        search_start = pos + surface.length(); // Advance search position
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            
+            // If we can't find the token in the original text, skip it entirely
+            // This ensures ALL tokens point to the original text buffer
+            if (!found) {
+                // Don't add this token - skip it completely
+                continue;
+            }
+        }
+        
+        // Allocate array for valid tokens only
+        if (valid_tokens.empty()) {
+            result->a = nullptr;
+            result->n = 0;
+            result->m = 0;
+            return 0;
+        }
+        
+        result->a = static_cast<rspamd_word_t*>(calloc(valid_tokens.size(), sizeof(rspamd_word_t)));
         if (!result->a) {
             return -1;
         }
         
         result->n = 0;
-        result->m = tokens.size();
+        result->m = valid_tokens.size();
         
-        for (const auto& token : tokens) {
-            // Skip tokens with empty surface (including dummy BOS/EOS tokens)
-            if (token.surface().empty()) {
-                continue;
-            }
-            
+        // Process only valid tokens
+        for (const auto& [pos, token_ptr] : valid_tokens) {
             rspamd_word_t& word = result->a[result->n];
+            const std::string& surface = token_ptr->surface();
             
-            // Set original surface form
-            char* surface_copy = strdup_safe(token.surface());
-            if (!surface_copy) {
-                kagome_cleanup_result(result);
-                return -1;
-            }
-            word.original.begin = surface_copy;
-            word.original.len = token.surface().length();
+            // CRITICAL: Always point to original text buffer
+            word.original.begin = text + pos;
+            word.original.len = surface.length();
+            word.flags = RSPAMD_WORD_FLAG_TEXT | RSPAMD_WORD_FLAG_UTF | RSPAMD_WORD_FLAG_NORMALISED;
             
             // Convert to UTF-32 for unicode field
-            auto utf32_chars = utf8_to_utf32(token.surface());
+            auto utf32_chars = utf8_to_utf32(surface);
             if (!utf32_chars.empty()) {
                 uint32_t* unicode_copy = static_cast<uint32_t*>(malloc(utf32_chars.size() * sizeof(uint32_t)));
                 if (unicode_copy) {
@@ -328,9 +363,9 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
             }
             
             // Set normalized form (use base form if available, otherwise surface)
-            std::string normalized = token.base_form();
+            std::string normalized = token_ptr->base_form();
             if (normalized.empty() || normalized == "*") {
-                normalized = token.surface();
+                normalized = surface;
             }
             char* normalized_copy = strdup_safe(normalized);
             if (normalized_copy) {
@@ -345,11 +380,8 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
                 word.stemmed.len = normalized.length();
             }
             
-            // Set flags
-            word.flags = RSPAMD_WORD_FLAG_TEXT | RSPAMD_WORD_FLAG_UTF | RSPAMD_WORD_FLAG_NORMALISED;
-            
             // Check if it's a stop word (very basic heuristic)
-            auto pos_vec = token.pos();
+            auto pos_vec = token_ptr->pos();
             if (!pos_vec.empty()) {
                 const std::string& pos = pos_vec[0];
                 if (pos == "助詞" || pos == "助動詞" || pos == "記号") {
@@ -377,11 +409,9 @@ void kagome_cleanup_result(rspamd_words_t *result) {
     for (size_t i = 0; i < result->n; i++) {
         rspamd_word_t& word = result->a[i];
         
-        // Free allocated strings
-        if (word.original.begin) {
-            free(const_cast<char*>(word.original.begin));
-            word.original.begin = nullptr;
-        }
+        // NEVER free original.begin - it always points to the original text buffer
+        // This was the source of the segfault!
+        
         if (word.unicode.begin) {
             free(const_cast<uint32_t*>(word.unicode.begin));
             word.unicode.begin = nullptr;

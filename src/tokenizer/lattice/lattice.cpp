@@ -309,12 +309,13 @@ void Lattice::backward(LatticeMode mode) {
         return;
     }
     
-    // Start from EOS node and trace back
+    // Collect nodes by tracing back from EOS
+    std::vector<Node*> collected_nodes;
     const Node* current = node_list_.back()[0];
     
     while (current != nullptr) {
         if (mode != LatticeMode::Extended || current->node_class() != NodeClass::Unknown) {
-            output_.push_back(const_cast<Node*>(current));
+            collected_nodes.push_back(const_cast<Node*>(current));
         } else {
             // Extended mode: break unknown words into characters
             const std::string& surface = current->surface();
@@ -335,7 +336,7 @@ void Lattice::backward(LatticeMode mode) {
                     
                     Node* char_node = node_pool_.get();
                     char_node->set_id(current->id());
-                    char_node->set_start(current->start() + char_index);
+                    char_node->set_start(current->position() + char_start_byte);
                     char_node->set_class(NodeClass::Dummy);
                     char_node->set_surface(surface.substr(char_start_byte, char_byte_len));
                     char_node->set_position(current->position() + char_start_byte);
@@ -346,13 +347,19 @@ void Lattice::backward(LatticeMode mode) {
                 char_index++;
             }
             
-            // Add character nodes in reverse order
-            for (auto it = char_nodes.rbegin(); it != char_nodes.rend(); ++it) {
-                output_.push_back(*it);
+            // Add character nodes in forward order
+            for (auto it = char_nodes.begin(); it != char_nodes.end(); ++it) {
+                collected_nodes.push_back(*it);
             }
         }
         
         current = current->prev();
+    }
+    
+    // Reverse the collected nodes to get forward order (BOS to EOS)
+    for (auto it = collected_nodes.rbegin(); it != collected_nodes.rend(); ++it) {
+        Node* node = *it;
+        output_.push_back(node);
     }
 }
 

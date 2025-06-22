@@ -108,7 +108,7 @@ std::vector<Token> Tokenizer::analyze_impl(std::string_view input,
         }
         
         // Calculate end position (start + surface byte length)
-        std::int32_t end_pos = node->start() + static_cast<std::int32_t>(node->surface().length());
+        std::int32_t end_pos = node->position() + static_cast<std::int32_t>(node->surface().length());
         
         // Use the full constructor that takes TokenClass explicitly
         tokens.emplace_back(
@@ -116,7 +116,7 @@ std::vector<Token> Tokenizer::analyze_impl(std::string_view input,
             node->id(),                                                      // id
             static_cast<TokenClass>(node->node_class()),                     // token_class
             node->position(),                                                // position  
-            node->start(),                                                   // start
+            node->position(),                                                // start
             end_pos,                                                         // end
             node->surface(),                                                 // surface
             shared_dict,                                                     // dict

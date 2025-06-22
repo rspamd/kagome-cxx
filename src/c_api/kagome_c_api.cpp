@@ -351,41 +351,66 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
             word.original.len = surface.length();
             word.flags = RSPAMD_WORD_FLAG_TEXT | RSPAMD_WORD_FLAG_UTF | RSPAMD_WORD_FLAG_NORMALISED;
             
-            // Convert to UTF-32 for unicode field
-            auto utf32_chars = utf8_to_utf32(surface);
-            if (!utf32_chars.empty()) {
-                uint32_t* unicode_copy = static_cast<uint32_t*>(malloc(utf32_chars.size() * sizeof(uint32_t)));
-                if (unicode_copy) {
-                    std::memcpy(unicode_copy, utf32_chars.data(), utf32_chars.size() * sizeof(uint32_t));
-                    word.unicode.begin = unicode_copy;
-                    word.unicode.len = utf32_chars.size();
+            // Get base form once to avoid multiple string copies
+            const std::string& base_form = token_ptr->base_form();
+            const std::string* normalized_source;
+            
+            // Use base form if available and meaningful, otherwise use surface
+            if (!base_form.empty() && base_form != "*") {
+                normalized_source = &base_form;
+            } else {
+                normalized_source = &surface;
+            }
+            
+            // Japanese Part-of-Speech filtering and classification
+            // This determines how rspamd should treat different types of morphemes
+            auto pos_vec = token_ptr->pos();
+            bool is_punctuation = false;
+            bool is_particle_or_auxiliary = false;
+            
+            if (!pos_vec.empty()) {
+                const std::string& main_pos = pos_vec[0];
+                
+                // 記号 = symbols/punctuation (。、！？etc.)
+                // These should be marked as exceptions to skip them in statistical analysis
+                if (main_pos == "記号") {
+                    is_punctuation = true;
+                    word.flags |= RSPAMD_WORD_FLAG_EXCEPTION;
+                }
+                // 助詞 = particles (は、が、を、に、etc.) - grammatical but less semantic value
+                // 助動詞 = auxiliary verbs (だ、である、ます、etc.) - grammatical function
+                // These are stop words - they carry grammatical info but less semantic weight
+                else if (main_pos == "助詞" || main_pos == "助動詞") {
+                    is_particle_or_auxiliary = true;
+                    word.flags |= RSPAMD_WORD_FLAG_STOP_WORD;
+                }
+                // TODO: Consider also marking very common words like それ、これ、あれ as stop words
+            }
+            
+            // Convert to UTF-32 for unicode field (only if not punctuation to save memory)
+            if (!is_punctuation) {
+                auto utf32_chars = utf8_to_utf32(surface);
+                if (!utf32_chars.empty()) {
+                    uint32_t* unicode_copy = static_cast<uint32_t*>(malloc(utf32_chars.size() * sizeof(uint32_t)));
+                    if (unicode_copy) {
+                        std::memcpy(unicode_copy, utf32_chars.data(), utf32_chars.size() * sizeof(uint32_t));
+                        word.unicode.begin = unicode_copy;
+                        word.unicode.len = utf32_chars.size();
+                    }
                 }
             }
             
-            // Set normalized form (use base form if available, otherwise surface)
-            std::string normalized = token_ptr->base_form();
-            if (normalized.empty() || normalized == "*") {
-                normalized = surface;
-            }
-            char* normalized_copy = strdup_safe(normalized);
+            // Allocate normalized and stemmed forms (single allocation each)
+            char* normalized_copy = strdup_safe(*normalized_source);
             if (normalized_copy) {
                 word.normalized.begin = normalized_copy;
-                word.normalized.len = normalized.length();
-            }
-            
-            // Set stemmed form (same as normalized for Japanese)
-            char* stemmed_copy = strdup_safe(normalized);
-            if (stemmed_copy) {
-                word.stemmed.begin = stemmed_copy;
-                word.stemmed.len = normalized.length();
-            }
-            
-            // Check if it's a stop word (very basic heuristic)
-            auto pos_vec = token_ptr->pos();
-            if (!pos_vec.empty()) {
-                const std::string& pos = pos_vec[0];
-                if (pos == "助詞" || pos == "助動詞" || pos == "記号") {
-                    word.flags |= RSPAMD_WORD_FLAG_STOP_WORD;
+                word.normalized.len = normalized_source->length();
+                
+                // For Japanese, stemmed form is the same as normalized (no further stemming needed)
+                char* stemmed_copy = strdup_safe(*normalized_source);
+                if (stemmed_copy) {
+                    word.stemmed.begin = stemmed_copy;
+                    word.stemmed.len = normalized_source->length();
                 }
             }
             

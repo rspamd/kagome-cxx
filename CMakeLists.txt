@@ -201,6 +201,15 @@ target_link_libraries(kagome_debug_metadata PRIVATE
     kagome_cpp
 )
 
+# Create the debug user sentence executable
+add_executable(kagome_debug_user_sentence
+    debug_user_sentence.cpp
+)
+
+target_link_libraries(kagome_debug_user_sentence PRIVATE
+    kagome_cpp
+)
+
 # Tests
 enable_testing()
 add_executable(kagome_tests

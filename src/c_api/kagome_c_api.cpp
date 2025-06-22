@@ -10,6 +10,8 @@
 #include <cctype>
 #include <cstring>
 #include <iostream>
+#include <filesystem>
+#include <dlfcn.h>
 #include <unicode/utf8.h>
 #include <unicode/ustring.h>
 #include <unicode/uscript.h>
@@ -17,6 +19,16 @@
 namespace {
     // Global tokenizer instance
     std::unique_ptr<kagome::tokenizer::Tokenizer> g_tokenizer;
+    
+    // Helper function to get the directory of the current shared library
+    std::string get_library_directory() {
+        Dl_info dl_info;
+        if (dladdr(reinterpret_cast<void*>(kagome_init), &dl_info) != 0 && dl_info.dli_fname != nullptr) {
+            std::filesystem::path lib_path(dl_info.dli_fname);
+            return lib_path.parent_path().string();
+        }
+        return "";
+    }
     
     // Helper function to detect Japanese characters
     bool contains_japanese_chars(const char* text, size_t len) {
@@ -81,13 +93,124 @@ namespace {
 
 extern "C" {
 
-int kagome_init(const ucl_object_t *config __attribute__((unused)), char *error_buf, size_t error_buf_size) {
+int kagome_init(const ucl_object_t *config, char *error_buf, size_t error_buf_size) {
     try {
-        // Try to create tokenizer with IPA dictionary
-        g_tokenizer = kagome::tokenizer::factory::create_tokenizer(
-            kagome::tokenizer::TokenizerType::Normal,
-            kagome::tokenizer::DictType::IPA
-        );
+        // For now, ignore config and use default IPA dictionary
+        // TODO: In future, rspamd can pass preprocessed config as environment variables
+        // or through a different mechanism
+        kagome::tokenizer::DictType dict_type = kagome::tokenizer::DictType::IPA;
+        
+        std::unique_ptr<kagome::dict::Dict> dictionary;
+        
+        // Search for dictionary in various locations
+        {
+            // Fallback to searching common paths
+            std::vector<std::string> potential_paths;
+            
+            // Get library directory for relative paths
+            std::string lib_dir = get_library_directory();
+            
+            if (dict_type == kagome::tokenizer::DictType::IPA) {
+                potential_paths = {
+                    "data/ipa/ipa.dict",
+                    "../data/ipa/ipa.dict", 
+                    "../../data/ipa/ipa.dict",
+                    "/usr/local/share/kagome/ipa.dict",
+                    "/usr/share/kagome/ipa.dict",
+                    "/opt/kagome/ipa.dict"
+                };
+                
+                // Add library-relative paths
+                if (!lib_dir.empty()) {
+                    potential_paths.insert(potential_paths.begin(), {
+                        lib_dir + "/ipa.dict",
+                        lib_dir + "/data/ipa/ipa.dict"
+                    });
+                }
+            } else if (dict_type == kagome::tokenizer::DictType::UniDic) {
+                potential_paths = {
+                    "data/uni/uni.dict",
+                    "../data/uni/uni.dict",
+                    "../../data/uni/uni.dict", 
+                    "/usr/local/share/kagome/uni.dict",
+                    "/usr/share/kagome/uni.dict",
+                    "/opt/kagome/uni.dict"
+                };
+                
+                // Add library-relative paths
+                if (!lib_dir.empty()) {
+                    potential_paths.insert(potential_paths.begin(), {
+                        lib_dir + "/uni.dict",
+                        lib_dir + "/data/uni/uni.dict"
+                    });
+                }
+            }
+            
+            // Try to load from paths with better error handling
+            std::string last_error;
+            for (const auto& path : potential_paths) {
+                if (std::filesystem::exists(path)) {
+                    try {
+                        // Add extra safety check for file size
+                        auto file_size = std::filesystem::file_size(path);
+                        if (file_size == 0 || file_size > 500 * 1024 * 1024) { // Max 500MB
+                            last_error = "Dictionary file size invalid: " + std::to_string(file_size);
+                            continue;
+                        }
+                        
+                        dictionary = kagome::dict::DictLoader::load_from_zip(path, true);
+                        if (dictionary) {
+                            break;
+                        }
+                    } catch (const std::exception& e) {
+                        last_error = std::string("Failed to load ") + path + ": " + e.what();
+                        // Continue trying other paths
+                        continue;
+                    } catch (...) {
+                        last_error = std::string("Unknown error loading ") + path;
+                        continue;
+                    }
+                }
+            }
+            
+            // If all dictionary loading failed, try to create a minimal fallback
+            if (!dictionary) {
+                try {
+                    dictionary = kagome::dict::DictLoader::create_fallback_dict();
+                    if (dictionary) {
+                        if (error_buf && error_buf_size > 0) {
+                            std::strncpy(error_buf, "Warning: Using fallback dictionary. "
+                                                 "For full functionality, place ipa.dict next to the library.", 
+                                                 error_buf_size - 1);
+                            error_buf[error_buf_size - 1] = '\0';
+                        }
+                        // Don't return error, continue with fallback
+                    }
+                } catch (const std::exception& e) {
+                    if (error_buf && error_buf_size > 0) {
+                        std::snprintf(error_buf, error_buf_size, 
+                                    "Could not load any dictionary. Last error: %s", 
+                                    last_error.empty() ? "Unknown" : last_error.c_str());
+                    }
+                    return -1;
+                }
+            }
+            
+            if (!dictionary) {
+                if (error_buf && error_buf_size > 0) {
+                    std::snprintf(error_buf, error_buf_size, 
+                                "Could not create fallback dictionary. Last error: %s", 
+                                last_error.empty() ? "Unknown" : last_error.c_str());
+                }
+                return -1;
+            }
+        }
+        
+        // Create tokenizer with loaded dictionary
+        kagome::tokenizer::TokenizerConfig tokenizer_config{};
+        tokenizer_config.default_mode = kagome::tokenizer::TokenizeMode::Normal;
+        
+        g_tokenizer = std::make_unique<kagome::tokenizer::Tokenizer>(std::move(dictionary), tokenizer_config);
         
         if (!g_tokenizer) {
             if (error_buf && error_buf_size > 0) {
@@ -100,7 +223,12 @@ int kagome_init(const ucl_object_t *config __attribute__((unused)), char *error_
         return 0;
     } catch (const std::exception& e) {
         if (error_buf && error_buf_size > 0) {
-            std::strncpy(error_buf, e.what(), error_buf_size - 1);
+            std::snprintf(error_buf, error_buf_size, "Exception in kagome_init: %s", e.what());
+        }
+        return -1;
+    } catch (...) {
+        if (error_buf && error_buf_size > 0) {
+            std::strncpy(error_buf, "Unknown exception in kagome_init", error_buf_size - 1);
             error_buf[error_buf_size - 1] = '\0';
         }
         return -1;

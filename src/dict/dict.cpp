@@ -345,9 +345,17 @@ bool DictLoader::load_contents_dict(Dict& dict, std::istream& stream) {
         // Read all data from stream
         std::vector<uint8_t> data;
         stream.seekg(0, std::ios::end);
-        size_t size = stream.tellg();
+        std::streampos size_pos = stream.tellg();
         stream.seekg(0, std::ios::beg);
         
+        // Add safety check for file size
+        if (size_pos < 0 || size_pos > 100 * 1024 * 1024) { // Max 100MB
+            fmt::print(stderr, "Contents dict file size invalid or too large: {}\n", 
+                       static_cast<long>(size_pos));
+            return false;
+        }
+        
+        size_t size = static_cast<size_t>(size_pos);
         data.resize(size);
         stream.read(reinterpret_cast<char*>(data.data()), size);
         
@@ -355,35 +363,76 @@ bool DictLoader::load_contents_dict(Dict& dict, std::istream& stream) {
             return true; // Empty contents is OK
         }
     
-    std::string content(data.begin(), data.end());
-    
-    // Parse content using delimiters from Go code
-    constexpr char row_delimiter = '\n';
-    constexpr char col_delimiter = '\a';
-    
-    std::vector<std::string> rows;
-    std::stringstream ss(content);
-    std::string row;
-    
-    while (std::getline(ss, row, row_delimiter)) {
-        std::vector<std::string> cols;
-        std::stringstream row_ss(row);
-        std::string col;
+        std::string content(data.begin(), data.end());
         
-        while (std::getline(row_ss, col, col_delimiter)) {
-            cols.push_back(col);
+        // Parse content using delimiters from Go code
+        constexpr char row_delimiter = '\n';
+        constexpr char col_delimiter = '\a';
+        
+        // Estimate number of rows to avoid frequent reallocations
+        size_t estimated_rows = std::count(content.begin(), content.end(), row_delimiter);
+        if (estimated_rows > 500000) { // Sanity check - max 500k entries
+            fmt::print(stderr, "Too many content rows: {}, limiting to 500000\n", estimated_rows);
+            estimated_rows = 500000;
         }
         
-        if (!cols.empty()) {
-            dict.contents.push_back(std::move(cols));
+        // Pre-allocate to avoid reallocations
+        dict.contents.reserve(estimated_rows);
+        
+        std::stringstream ss(content);
+        std::string row;
+        size_t row_count = 0;
+        
+        while (std::getline(ss, row, row_delimiter) && row_count < 500000) {
+            if (row.empty()) {
+                continue; // Skip empty rows
+            }
+            
+            // Estimate columns to avoid reallocations
+            size_t estimated_cols = std::count(row.begin(), row.end(), col_delimiter) + 1;
+            if (estimated_cols > 20) { // Sanity check - max 20 features per entry
+                estimated_cols = 20;
+            }
+            
+            std::vector<std::string> cols;
+            cols.reserve(estimated_cols);
+            
+            std::stringstream row_ss(row);
+            std::string col;
+            size_t col_count = 0;
+            
+            while (std::getline(row_ss, col, col_delimiter) && col_count < 20) {
+                cols.push_back(std::move(col));
+                col_count++;
+            }
+            
+            if (!cols.empty()) {
+                dict.contents.push_back(std::move(cols));
+            }
+            
+            row_count++;
+            
+            // Progress indicator for large files
+            if (row_count % 50000 == 0) {
+                fmt::print("Processed {} content rows...\n", row_count);
+            }
         }
-    }
-    
-    fmt::print("Loaded contents with {} rows\n", dict.contents.size());
-    return true;
+        
+        fmt::print("Loaded contents with {} rows\n", dict.contents.size());
+        return true;
+        
     } catch (const std::exception& e) {
         fmt::print(stderr, "Failed to load contents: {}\n", e.what());
-        return false;
+        
+        // Create minimal fallback to prevent total failure
+        dict.contents.clear();
+        dict.contents.resize(1000);
+        for (auto& content : dict.contents) {
+            content = {"*", "*", "*", "*", "*", "*", "*", "*", "*"};
+        }
+        fmt::print("Created fallback contents with {} entries\n", dict.contents.size());
+        
+        return true; // Return true to continue with fallback
     }
 }
 

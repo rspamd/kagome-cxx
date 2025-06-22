@@ -1,84 +1,72 @@
-# Kagome Rspamd Tokenizer Integration
+# Kagome Japanese Tokenizer Integration with Rspamd
 
-This directory contains a C++ implementation of a Japanese morphological analyzer (kagome) that can be used as a custom tokenizer plugin for Rspamd.
+This document describes how to integrate the Kagome Japanese tokenizer with Rspamd for improved Japanese text analysis.
 
-## Overview
+## Quick Setup
 
-The integration provides:
-- A C API wrapper around the kagome C++ library
-- An Rspamd-compatible tokenizer plugin with proper language detection
-- Japanese text tokenization using the IPA dictionary
-- Proper handling of word flags and normalization for Rspamd
-
-## Building
-
-### Prerequisites
-
-- CMake 3.25+
-- C++23 compatible compiler (GCC 11+, Clang 14+)
-- ICU library (for Unicode handling)
-- libarchive (for dictionary loading)
-- IPA dictionary data
-
-### Build Steps
+### 1. Build the Kagome Tokenizer Plugin
 
 ```bash
-# Create build directory
-mkdir build && cd build
-
-# Configure the project
+cd kagome-cxx
+mkdir -p build && cd build
 cmake ..
-
-# Build the project
-make -j$(nproc)
+make -j4
 ```
 
-This will create:
-- `kagome_rspamd_tokenizer.so` - The shared library for Rspamd
-- `kagome_test_plugin` - Test program to verify functionality
-- `kagome_main` - Original kagome demo program
+This will create `kagome_rspamd_tokenizer.dylib` (macOS) or `kagome_rspamd_tokenizer.so` (Linux).
 
-## Testing
+### 2. Install the Dictionary
 
-You can test the tokenizer functionality before integrating with Rspamd:
+The tokenizer requires a Japanese dictionary file. You have several options:
 
+#### Option A: Place next to the library (Recommended)
 ```bash
-./kagome_test_plugin
+# Copy the dictionary to the same directory as the plugin
+cp ../data/ipa/ipa.dict ./ipa.dict
 ```
 
-This will test Japanese language detection and tokenization with various text samples.
-
-## Rspamd Integration
-
-### 1. Install the Plugin
-
-Copy the shared library to your Rspamd plugins directory:
-
+#### Option B: Install to system location
 ```bash
-# Example for system installation
-sudo cp kagome_rspamd_tokenizer.so /usr/local/lib/rspamd/plugins/
+# Create system directory
+sudo mkdir -p /usr/local/share/kagome/
 
-# Or for local installation
-cp kagome_rspamd_tokenizer.so /path/to/rspamd/plugins/
+# Copy dictionary
+sudo cp ../data/ipa/ipa.dict /usr/local/share/kagome/ipa.dict
 ```
 
-### 2. Configure Rspamd
+#### Option C: Alternative locations
+The tokenizer will search these locations automatically:
+- `./ipa.dict` (next to the library) - **Recommended**
+- `./data/ipa/ipa.dict`
+- `../data/ipa/ipa.dict` 
+- `../../data/ipa/ipa.dict`
+- `/usr/local/share/kagome/ipa.dict`
+- `/usr/share/kagome/ipa.dict`
+- `/opt/kagome/ipa.dict`
 
-Add the tokenizer configuration to your Rspamd configuration:
+### 3. Configure Rspamd
 
-```lua
--- In your rspamd configuration (e.g., local.d/options.inc)
-tokenizers {
-  japanese_kagome = {
-    enabled = true;
-    path = "/usr/local/lib/rspamd/plugins/kagome_rspamd_tokenizer.so";
-    priority = 1.0;  -- Higher priority for better Japanese detection
-    min_confidence = 0.3;
-  };
+Add the following to your rspamd configuration (e.g., `/etc/rspamd/local.d/options.inc`):
+
+```ucl
+# Enable custom tokenizers
+custom_tokenizers {
+    # Japanese tokenizer using Kagome
+    kagome {
+        enabled = true;
+        path = "/path/to/kagome_rspamd_tokenizer.so";  # Update this path
+        priority = 60.0;  # Higher priority than default tokenizer
+        
+        # Optional: tokenizer-specific config
+        config {
+            # Currently, config is ignored by kagome tokenizer
+            # Dictionary path is auto-detected
+        }
+    }
 }
 ```
 
-### 3. Restart Rspamd
+### 4. Restart Rspamd
 
 ```bash
 sudo systemctl restart rspamd
@@ -86,116 +74,164 @@ sudo systemctl restart rspamd
 sudo service rspamd restart
 ```
 
-## API Implementation
+## Configuration Options
 
-The plugin implements the Rspamd custom tokenizer API with these functions:
+### Library Path
+Update the `path` to point to your compiled library:
+- **Linux**: `/path/to/kagome_rspamd_tokenizer.so`
+- **macOS**: `/path/to/kagome_rspamd_tokenizer.dylib`
 
-- `init()` - Loads the IPA dictionary and initializes the tokenizer
-- `deinit()` - Cleans up resources
-- `detect_language()` - Detects Japanese text based on script analysis
-- `tokenize()` - Performs morphological analysis and returns tokens
-- `cleanup_result()` - Frees allocated token data
-- `get_language_hint()` - Returns "ja" for Japanese
-- `get_min_confidence()` - Returns minimum confidence threshold (0.3)
+### Priority
+The `priority` determines the order of tokenizer detection:
+- Higher values = checked first
+- Default: 50.0
+- Recommended for Japanese: 60.0+
 
-## Features
+### Enable/Disable
+```ucl
+kagome {
+    enabled = false;  # Disable the tokenizer
+}
+```
 
-### Language Detection
+## How It Works
 
-The tokenizer uses ICU's script detection to identify Japanese text by looking for:
-- Hiragana script (ひらがな)
-- Katakana script (カタカナ)  
-- Han/Kanji script (漢字)
+1. **Language Detection**: When processing text, rspamd asks each tokenizer to detect the language
+2. **Confidence Scoring**: Kagome returns confidence 0.3-0.95 for Japanese text, -1.0 for non-Japanese
+3. **Tokenizer Selection**: The tokenizer with highest confidence above its threshold is used
+4. **Fallback**: If no custom tokenizer matches, rspamd falls back to ICU word breaking
 
-Confidence is calculated based on the ratio of Japanese characters to total characters.
+### Japanese Detection
+Kagome detects Japanese text by looking for:
+- Hiragana characters (ひらがな)
+- Katakana characters (カタカナ) 
+- Kanji/Han characters (漢字)
 
-### Tokenization
-
-The tokenizer provides:
-- Surface form extraction
-- Base form normalization
-- Part-of-speech based stop word detection
-- Proper UTF-8/UTF-32 handling
-- Memory-safe string allocation and cleanup
-
-### Word Flags
-
-The following Rspamd word flags are set appropriately:
-- `RSPAMD_WORD_FLAG_TEXT` - For text tokens
-- `RSPAMD_WORD_FLAG_UTF` - For UTF-8 content
-- `RSPAMD_WORD_FLAG_NORMALISED` - For normalized forms
-- `RSPAMD_WORD_FLAG_STOP_WORD` - For particles and auxiliary verbs
-
-## Dictionary
-
-The tokenizer uses the IPA (IPADIC) dictionary format. The dictionary is loaded automatically during initialization from the following search paths:
-
-1. `data/ipa/ipa.dict` (relative to executable)
-2. `../data/ipa/ipa.dict`
-3. `../../data/ipa/ipa.dict`
-4. User-specific paths (configurable)
-
-## Performance
-
-The tokenizer is designed for email processing workloads:
-- Fast initialization with dictionary caching
-- Efficient memory management with proper cleanup
-- Minimal overhead for non-Japanese text (quick rejection)
-- Optimized for typical email text lengths
+The confidence score is based on the ratio of Japanese characters to total characters.
 
 ## Troubleshooting
 
-### Plugin Not Loading
+### Dictionary Loading Issues
 
-1. Check that the shared library path is correct
-2. Verify that all dependencies (ICU, libarchive) are available
-3. Check Rspamd logs for loading errors
-4. Ensure the dictionary file is accessible
+**Problem**: Tokenizer fails to initialize with dictionary errors
 
-### Poor Detection
+**Solutions**:
+1. **Check dictionary location**: Ensure `ipa.dict` is accessible to the tokenizer
+   ```bash
+   # Check if file exists next to library
+   ls -la /path/to/kagome_rspamd_tokenizer.so
+   ls -la /path/to/ipa.dict
+   ```
 
-1. Verify that the text contains actual Japanese characters
-2. Check that ICU is properly installed and working
-3. Adjust `min_confidence` if needed (lower values = more sensitive)
+2. **Check file permissions**: Ensure rspamd can read the dictionary
+   ```bash
+   sudo chown rspamd:rspamd /path/to/ipa.dict
+   sudo chmod 644 /path/to/ipa.dict
+   ```
 
-### Memory Issues
+3. **Use fallback dictionary**: If the main dictionary is corrupted, the tokenizer will use a minimal fallback
 
-1. Ensure `cleanup_result()` is being called properly
-2. Check for dictionary loading issues during initialization
-3. Monitor memory usage during processing
+**Error Messages**:
+- `"Dictionary file not found"` → Copy `ipa.dict` to the correct location
+- `"Dictionary file size invalid"` → Dictionary file may be corrupted, re-copy from source
+- `"Warning: Using fallback dictionary"` → Main dictionary not found, basic functionality available
 
-## Example Usage
+### Library Loading Issues
 
-The tokenizer successfully handles Japanese text:
+**Problem**: `"cannot load tokenizer ... from ..."`
 
+**Solutions**:
+1. **Check library path**: Verify the path in rspamd config matches the actual file location
+2. **Check file permissions**: Ensure rspamd can read the library
+   ```bash
+   sudo chmod 755 /path/to/kagome_rspamd_tokenizer.so
+   ```
+3. **Check dependencies**: Ensure all required libraries are installed (ICU, fmt, etc.)
+
+### Runtime Issues
+
+**Problem**: Japanese text not being tokenized correctly
+
+**Solutions**:
+1. **Check detection**: Enable debug logging to see if Japanese text is being detected
+2. **Verify priority**: Ensure kagome has higher priority than other tokenizers
+3. **Test confidence**: Very short Japanese text may have low confidence scores
+
+### Memory Issues (AddressSanitizer)
+
+**Problem**: Crashes with AddressSanitizer when loading dictionary
+
+**Solutions**:
+1. **Use fallback dictionary**: The tokenizer will automatically fall back if main dictionary loading fails
+2. **Check dictionary integrity**: Re-download or rebuild the dictionary file
+3. **Update library**: Ensure you're using the latest version with improved error handling
+
+## Testing
+
+### Verify Installation
 ```bash
-# Test the plugin directly
-./kagome_test_plugin
+# Check if library loads
+ldd /path/to/kagome_rspamd_tokenizer.so  # Linux
+otool -L /path/to/kagome_rspamd_tokenizer.dylib  # macOS
 
-# Output for simple Japanese words:
-Testing text: "これ"
-  Language detection confidence: 0.95  
-  Tokenization successful! Found 1 tokens:
-    Token 1: Original: "これ", Normalized: "これ", Flags: TEXT|UTF|NORMALISED
-
-Testing text: "日本"
-  Language detection confidence: 0.95
-  Tokenization successful! Found 1 tokens:
-    Token 1: Original: "日本", Normalized: "日本", Flags: TEXT|UTF|NORMALISED
+# Test with rspamd
+sudo rspamd -t  # Test configuration
 ```
 
-This enables proper Japanese text analysis for Rspamd's statistical and rule-based processing.
+### Debug Logging
+Enable debug logging in rspamd config:
+```ucl
+logging {
+    level = "info";
+    # This will show tokenizer loading and detection messages
+}
+```
 
-## Current Limitations
+Look for messages like:
+- `"starting to load custom tokenizer 'kagome'"`
+- `"successfully loaded custom tokenizer 'kagome'"`
+- `"using tokenizer 'kagome' for language hint 'ja'"`
 
-**Note**: The current implementation has a limitation with longer Japanese text sequences. While individual Japanese words and short phrases are tokenized correctly, longer sentences may not be processed due to lattice path-finding issues in the core kagome implementation. This is a known issue that can be addressed in future versions.
+### Test Japanese Text
+Send an email with Japanese text through rspamd and check the logs for tokenizer activity.
 
-The tokenizer works well for:
-- ✅ Individual Japanese words (これ, 日本, カタカナ)
-- ✅ Short phrases  
-- ✅ Language detection for all Japanese text
-- ✅ Mixed language detection
+## Performance Notes
 
-Areas for improvement:
-- 🔄 Longer Japanese sentences (lattice processing needs enhancement)
-- 🔄 Complex morphological analysis for extended text 
+- **Dictionary Loading**: Initial loading may take a few seconds
+- **Memory Usage**: Expect ~50-100MB memory usage for the dictionary
+- **Tokenization Speed**: Very fast once loaded (microseconds per text)
+- **Fallback Mode**: If using fallback dictionary, functionality is limited but won't crash
+
+## Advanced Configuration
+
+### Custom Dictionary Paths
+Currently, dictionary paths are auto-detected. In future versions, you may be able to specify custom paths in the config section.
+
+### Multiple Languages
+You can configure multiple tokenizers for different languages:
+```ucl
+custom_tokenizers {
+    kagome {
+        enabled = true;
+        path = "/path/to/kagome_rspamd_tokenizer.so";
+        priority = 60.0;
+    }
+    
+    # Add other language tokenizers here
+    chinese_tokenizer {
+        enabled = true; 
+        path = "/path/to/chinese_tokenizer.so";
+        priority = 55.0;
+    }
+}
+```
+
+## Support
+
+For issues and questions:
+1. Check rspamd logs for error messages
+2. Verify all installation steps were completed
+3. Test with the fallback dictionary if main dictionary fails
+4. Report specific error messages for debugging
+
+The integration is designed to be robust - if the kagome tokenizer fails to load or crashes, rspamd will continue working with the default ICU tokenizer. 

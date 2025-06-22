@@ -293,7 +293,6 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
         // Pre-process to find valid tokens that exist in original text
         std::vector<std::pair<size_t, const kagome::tokenizer::Token*>> valid_tokens;
         
-        size_t search_start = 0;
         for (const auto& token : tokens) {
             const std::string& surface = token.surface();
             
@@ -302,26 +301,65 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
                 continue;
             }
             
-            // Find this token in the original text starting from search_start
-            bool found = false;
-            for (size_t pos = search_start; pos <= len - surface.length(); pos++) {
-                if (std::memcmp(text + pos, surface.c_str(), surface.length()) == 0) {
-                    // Verify this is a proper boundary (not middle of another character)
-                    // For UTF-8, check that we're at the start of a character
-                    if (pos == 0 || !U8_IS_TRAIL(text[pos])) {
-                        valid_tokens.push_back({pos, &token});
-                        search_start = pos + surface.length(); // Advance search position
-                        found = true;
-                        break;
-                    }
-                }
+            // Additional safety: skip tokens with invalid surface length
+            if (surface.length() == 0 || surface.length() > len) {
+                continue;
             }
             
-            // If we can't find the token in the original text, skip it entirely
-            // This ensures ALL tokens point to the original text buffer
-            if (!found) {
-                // Don't add this token - skip it completely
-                continue;
+            // Use the token's actual start position from the tokenizer
+            std::int32_t raw_start = token.start();
+            
+            // Safety check: ensure token position is non-negative and reasonable
+            if (raw_start < 0 || static_cast<size_t>(raw_start) >= len) {
+                // Token position is invalid, try fallback search
+                bool found = false;
+                if (len >= surface.length()) {
+                    for (size_t pos = 0; pos <= len - surface.length(); pos++) {
+                        if (std::memcmp(text + pos, surface.c_str(), surface.length()) == 0) {
+                            // Verify this is a proper UTF-8 boundary
+                            if (pos == 0 || !U8_IS_TRAIL(text[pos])) {
+                                valid_tokens.push_back({pos, &token});
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!found) {
+                    continue;
+                }
+            } else {
+                size_t token_start = static_cast<size_t>(raw_start);
+                
+                // Verify the token position is valid and the surface matches
+                if (token_start < len && 
+                    token_start + surface.length() <= len &&
+                    std::memcmp(text + token_start, surface.c_str(), surface.length()) == 0) {
+                    // Verify this is a proper UTF-8 boundary
+                    if (token_start == 0 || !U8_IS_TRAIL(text[token_start])) {
+                        valid_tokens.push_back({token_start, &token});
+                        continue;
+                    }
+                }
+                
+                // If position validation fails, try fallback search
+                bool found = false;
+                if (len >= surface.length()) {
+                    for (size_t pos = 0; pos <= len - surface.length(); pos++) {
+                        if (std::memcmp(text + pos, surface.c_str(), surface.length()) == 0) {
+                            // Verify this is a proper boundary
+                            if (pos == 0 || !U8_IS_TRAIL(text[pos])) {
+                                valid_tokens.push_back({pos, &token});
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                // Only skip if we absolutely cannot find the token
+                if (!found) {
+                    continue;
+                }
             }
         }
         
@@ -343,8 +381,18 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
         
         // Process only valid tokens
         for (const auto& [pos, token_ptr] : valid_tokens) {
+            // Additional safety checks
+            if (!token_ptr || pos >= len) {
+                continue;
+            }
+            
             rspamd_word_t& word = result->a[result->n];
             const std::string& surface = token_ptr->surface();
+            
+            // Safety check: ensure we don't go beyond buffer bounds
+            if (pos + surface.length() > len) {
+                continue;
+            }
             
             // CRITICAL: Always point to original text buffer
             word.original.begin = text + pos;
@@ -352,7 +400,14 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
             word.flags = RSPAMD_WORD_FLAG_TEXT | RSPAMD_WORD_FLAG_UTF | RSPAMD_WORD_FLAG_NORMALISED;
             
             // Get base form once to avoid multiple string copies
-            const std::string& base_form = token_ptr->base_form();
+            std::string base_form;
+            try {
+                base_form = token_ptr->base_form();
+            } catch (...) {
+                // If base_form() throws, use surface as fallback
+                base_form = surface;
+            }
+            
             const std::string* normalized_source;
             
             // Use base form if available and meaningful, otherwise use surface
@@ -364,7 +419,14 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result) {
             
             // Japanese Part-of-Speech filtering and classification
             // This determines how rspamd should treat different types of morphemes
-            auto pos_vec = token_ptr->pos();
+            std::vector<std::string> pos_vec;
+            try {
+                pos_vec = token_ptr->pos();
+            } catch (...) {
+                // If pos() throws, continue with empty vector
+                pos_vec.clear();
+            }
+            
             bool is_punctuation = false;
             bool is_particle_or_auxiliary = false;
             

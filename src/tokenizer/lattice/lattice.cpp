@@ -193,6 +193,12 @@ void Lattice::build(std::string_view input) {
                 add_node(char_pos, base_id + i, char_start_byte, char_pos,
                         NodeClass::Unknown, std::move(full_surface));
             }
+        } else {
+            // Character category not in unk_dict - create basic unknown node to maintain lattice connectivity
+            // This is critical for mixed content (ASCII + Japanese) to work properly
+            std::string full_surface = input_.substr(char_start_byte, end_byte - char_start_byte);
+            add_node(char_pos, -2, char_start_byte, char_pos,  // Use special ID for unmapped categories
+                    NodeClass::Unknown, std::move(full_surface));
         }
         
         // Advance by the number of characters consumed by unknown word
@@ -323,7 +329,6 @@ void Lattice::backward(LatticeMode mode) {
             
             // Iterate directly over UTF-8 string without conversion
             std::int32_t byte_pos = 0;
-            std::int32_t char_index = 0;
             std::int32_t surface_len = static_cast<std::int32_t>(surface.length());
             
             while (byte_pos < surface_len) {
@@ -343,8 +348,6 @@ void Lattice::backward(LatticeMode mode) {
                     
                     char_nodes.push_back(char_node);
                 }
-                
-                char_index++;
             }
             
             // Add character nodes in forward order

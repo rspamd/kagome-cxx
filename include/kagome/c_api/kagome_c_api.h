@@ -44,9 +44,9 @@ typedef struct rspamd_word {
 } rspamd_word_t;
 
 typedef struct rspamd_words {
-    rspamd_word_t *a;
     size_t n;
     size_t m;
+    rspamd_word_t *a;
 } rspamd_words_t;
 
 /* Forward declarations */

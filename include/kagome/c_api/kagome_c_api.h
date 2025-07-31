@@ -10,13 +10,13 @@ extern "C" {
 
 /* Copy the exact types from rspamd_tokenizer_types.h */
 typedef struct rspamd_ftok {
-    size_t len;
-    const char *begin;
+	size_t len;
+	const char *begin;
 } rspamd_ftok_t;
 
 typedef struct rspamd_ftok_unicode {
-    size_t len;
-    const uint32_t *begin;
+	size_t len;
+	const uint32_t *begin;
 } rspamd_ftok_unicode_t;
 
 /* Word flags */
@@ -36,17 +36,17 @@ typedef struct rspamd_ftok_unicode {
 #define RSPAMD_WORD_FLAG_EMOJI (1u << 13u)
 
 typedef struct rspamd_word {
-    rspamd_ftok_t original;
-    rspamd_ftok_unicode_t unicode;
-    rspamd_ftok_t normalized;
-    rspamd_ftok_t stemmed;
-    unsigned int flags;
+	rspamd_ftok_t original;
+	rspamd_ftok_unicode_t unicode;
+	rspamd_ftok_t normalized;
+	rspamd_ftok_t stemmed;
+	unsigned int flags;
 } rspamd_word_t;
 
 typedef struct rspamd_words_s {
-    size_t n;
-    size_t m;
-    rspamd_word_t *a;
+	size_t n;
+	size_t m;
+	rspamd_word_t *a;
 } rspamd_words_t;
 
 /* Forward declarations */
@@ -110,4 +110,4 @@ double kagome_get_min_confidence(void);
 }
 #endif
 
-#endif /* KAGOME_C_API_H */ 
+#endif /* KAGOME_C_API_H */

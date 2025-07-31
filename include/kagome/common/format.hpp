@@ -6,5 +6,5 @@
 #include <fmt/format.h>
 
 namespace kagome {
-    using fmt::format;
+using fmt::format;
 }

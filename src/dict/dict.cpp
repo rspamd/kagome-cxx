@@ -1,5 +1,6 @@
 #include "kagome/dict/dict.hpp"
 #include "kagome/dict/binary_loader.hpp"
+#include <algorithm>
 #include <fmt/format.h>
 #include <fmt/core.h>
 #include <archive.h>

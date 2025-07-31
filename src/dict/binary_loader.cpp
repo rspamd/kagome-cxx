@@ -212,7 +212,7 @@ std::shared_ptr<Dict> BinaryDictLoader::load_from_directory(const std::string &d
 	return dict;
 }
 
-void BinaryDictLoader::load_dict_info(Dict &dict, std::istream &stream)
+void BinaryDictLoader::load_dict_info(Dict & /* dict */, std::istream &stream)
 {
 	// Simple text-based format for dict.info
 	std::string line;
@@ -423,7 +423,7 @@ void BinaryDictLoader::load_connection_dict(Dict &dict, std::istream &stream)
 	}
 }
 
-void BinaryDictLoader::load_index_dict(Dict &dict, std::istream &stream)
+void BinaryDictLoader::load_index_dict(Dict &dict, std::istream & /* stream */)
 {
 	// For now, we'll build the index from the loaded surface forms
 	// TODO: Implement proper binary index loading
@@ -452,7 +452,7 @@ void BinaryDictLoader::load_index_dict(Dict &dict, std::istream &stream)
 	}
 }
 
-void BinaryDictLoader::load_chardef_dict(Dict &dict, std::istream &stream)
+void BinaryDictLoader::load_chardef_dict(Dict &dict, std::istream & /* stream */)
 {
 	// Simplified character definition loading
 	// The actual format is complex, so we'll use our existing character categories

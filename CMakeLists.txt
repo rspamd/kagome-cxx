@@ -32,6 +32,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
+# Ensure fmt is compiled with -fPIC for shared library compatibility
+set_target_properties(fmt PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Add unordered_dense
 FetchContent_Declare(
     unordered_dense
@@ -39,6 +42,9 @@ FetchContent_Declare(
     GIT_TAG v4.5.0
 )
 FetchContent_MakeAvailable(unordered_dense)
+
+# Ensure unordered_dense is compiled with -fPIC for shared library compatibility
+set_target_properties(unordered_dense PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Create the main library
 add_library(kagome_cpp STATIC
@@ -68,6 +74,9 @@ target_compile_options(kagome_cpp PRIVATE
     -Wall -Wextra -Wpedantic
 )
 
+# Enable position-independent code for shared library compatibility
+set_target_properties(kagome_cpp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Create the C API library
 add_library(kagome_c_api STATIC
     src/c_api/kagome_c_api.cpp
@@ -87,6 +96,9 @@ target_compile_options(kagome_c_api PRIVATE
     ${ICU_CFLAGS_OTHER}
     -Wall -Wextra -Wpedantic
 )
+
+# Enable position-independent code for shared library compatibility
+set_target_properties(kagome_c_api PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Create the shared library for Rspamd plugin
 add_library(kagome_rspamd_tokenizer SHARED

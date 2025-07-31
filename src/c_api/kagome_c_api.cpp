@@ -97,7 +97,7 @@ std::vector<uint32_t> utf8_to_utf32(const std::string &utf8_str)
 
 extern "C" {
 
-int kagome_init(const ucl_object_t *config, char *error_buf, size_t error_buf_size)
+int kagome_init(const ucl_object_t * /* config */, char *error_buf, size_t error_buf_size)
 {
 	try {
 		// For now, ignore config and use default IPA dictionary
@@ -433,7 +433,7 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result)
 			}
 
 			bool is_punctuation = false;
-			bool is_particle_or_auxiliary = false;
+			bool is_particle_or_auxiliary [[maybe_unused]] = false;
 
 			if (!pos_vec.empty()) {
 				const std::string &main_pos = pos_vec[0];

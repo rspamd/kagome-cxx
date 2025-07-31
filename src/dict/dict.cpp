@@ -531,7 +531,7 @@ bool DictLoader::load_connection_dict(Dict &dict, std::istream &stream)
 	return true;
 }
 
-bool DictLoader::load_char_def_dict(Dict &dict, std::istream &stream)
+bool DictLoader::load_char_def_dict(Dict &dict, std::istream & /* stream */)
 {
 	// CharDef uses Go's gob encoding - create comprehensive fallback
 	dict.char_class = {"DEFAULT", "SPACE", "ALPHA", "DIGIT", "KANJI", "HIRAGANA", "KATAKANA", "SYMBOL", "OTHER"};

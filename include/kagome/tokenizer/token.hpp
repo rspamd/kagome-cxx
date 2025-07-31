@@ -162,28 +162,5 @@ namespace utils {
 
 } // namespace kagome::tokenizer
 
-/// Support for std::format
-template<>
-struct std::formatter<kagome::tokenizer::Token> {
-    constexpr auto parse(std::format_parse_context& ctx) {
-        return ctx.begin();
-    }
-    
-    auto format(const kagome::tokenizer::Token& token, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "{}:{} ({}: {}, {}) {} [{}]",
-                             token.index(), token.surface(), token.position(),
-                             token.start(), token.end(), 
-                             to_string(token.token_class()), token.id());
-    }
-};
 
-template<>
-struct std::formatter<kagome::tokenizer::TokenClass> {
-    constexpr auto parse(std::format_parse_context& ctx) {
-        return ctx.begin();
-    }
-    
-    auto format(kagome::tokenizer::TokenClass cls, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "{}", to_string(cls));
-    }
-}; 
+ 

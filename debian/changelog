@@ -1,0 +1,17 @@
+kagome-cpp (1.0.0-1) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnnnn)
+  * Modern C++23 implementation of Japanese morphological analyzer
+  * Based on original kagome Go implementation by ikawaha
+  * Features include:
+    - High-performance tokenization with C++23 features
+    - Rspamd integration plugin for Japanese email processing
+    - Multiple tokenization modes (Normal, Search, Extended)
+    - Lattice-based analysis using Viterbi algorithm
+    - Memory-efficient object pooling
+    - Unicode/UTF-8 support via libicu
+    - IPA dictionary support
+  * Includes development files, runtime library, tools, and Rspamd plugin
+  * Apache 2.0 license, compatible with original kagome project
+
+ -- Kagome C++ Team <support@example.com>  Thu, 01 Feb 2024 12:00:00 +0000

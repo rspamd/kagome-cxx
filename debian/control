@@ -1,0 +1,108 @@
+Source: kagome-cpp
+Section: libs
+Priority: optional
+Maintainer: Kagome C++ Team <support@example.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.25),
+               pkg-config,
+               libicu-dev,
+               libfmt-dev,
+               libarchive-dev,
+               libc6-dev
+Standards-Version: 4.5.1
+Homepage: https://github.com/example/kagome-cxx
+Vcs-Git: https://github.com/example/kagome-cxx.git
+Vcs-Browser: https://github.com/example/kagome-cxx
+
+Package: libkagome-cpp-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends: ${misc:Depends},
+         libkagome-cpp1 (= ${binary:Version}),
+         libicu-dev,
+         libfmt-dev,
+         libarchive-dev
+Description: Modern C++ implementation of Japanese morphological analyzer - development files
+ Kagome C++ is a modern C++23 implementation of the Japanese morphological
+ analyzer kagome, originally written in Go. This implementation uses modern
+ C++ features and libraries for high-performance Japanese text tokenization.
+ .
+ This package contains the development files (headers and static libraries).
+
+Package: libkagome-cpp1
+Architecture: any
+Multi-Arch: same
+Section: libs
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Modern C++ implementation of Japanese morphological analyzer - runtime
+ Kagome C++ is a modern C++23 implementation of the Japanese morphological
+ analyzer kagome, originally written in Go. This implementation uses modern
+ C++ features and libraries for high-performance Japanese text tokenization.
+ .
+ Features:
+  * Modern C++23 with concepts, ranges, and format library
+  * High performance with efficient hash tables
+  * Unicode support with proper UTF-8 handling
+  * Multiple tokenization modes (Normal, Search, Extended)
+  * Lattice-based analysis using Viterbi algorithm
+  * Dictionary support (System and user dictionaries)
+  * Memory efficient with object pooling
+ .
+ This package contains the runtime library.
+
+Package: kagome-rspamd-tokenizer
+Architecture: any
+Section: utils
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         kagome-dict-ipa
+Suggests: rspamd
+Description: Japanese tokenizer plugin for Rspamd mail system
+ This package provides a shared library plugin for Rspamd mail processing
+ system, enabling Japanese text tokenization for spam detection and email
+ classification.
+ .
+ The plugin uses the Kagome C++ library to perform morphological analysis
+ of Japanese text, providing better tokenization for Japanese emails than
+ standard Unicode word breaking.
+ .
+ Features:
+  * Automatic Japanese text detection
+  * High-performance morphological analysis
+  * Seamless integration with Rspamd tokenizer framework
+  * Configurable confidence thresholds
+  * Fallback to default tokenizer for non-Japanese text
+
+Package: kagome-dict-ipa
+Architecture: all
+Section: misc
+Depends: ${misc:Depends}
+Description: IPA dictionary for Kagome Japanese morphological analyzer
+ This package contains the IPA (Information-technology Promotion Agency)
+ dictionary required by the Kagome Japanese morphological analyzer.
+ .
+ The dictionary provides:
+  * Part-of-speech information
+  * Reading (pronunciation) data
+  * Word segmentation rules
+  * Morphological features for Japanese text analysis
+ .
+ This dictionary is based on the IPAdic dictionary and is required for
+ proper operation of the Kagome tokenizer.
+
+Package: kagome-tools
+Architecture: any
+Section: utils
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         kagome-dict-ipa
+Description: Command-line tools for Japanese morphological analysis
+ This package provides command-line utilities for Japanese text analysis
+ using the Kagome morphological analyzer.
+ .
+ Included tools:
+  * kagome_main - Interactive and batch text analysis
+  * kagome_debug_tokenizer - Debugging and visualization tools
+  * kagome_tests - Test suite for validation
+ .
+ The tools support multiple tokenization modes, JSON output, and lattice
+ visualization for detailed morphological analysis debugging.

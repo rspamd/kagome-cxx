@@ -1,0 +1,293 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.tag }}
+        release_name: Kagome C++ ${{ steps.version.outputs.version }}
+        body: |
+          ## Kagome C++ ${{ steps.version.outputs.version }}
+          
+          Modern C++23 implementation of Japanese morphological analyzer with Rspamd integration.
+          
+          ### Features
+          - High-performance Japanese tokenization (3-4x faster than Go version)
+          - Memory efficient (40% less usage than Go version)
+          - Seamless Rspamd integration for Japanese email processing
+          - Complete IPA dictionary support
+          - Modern C++23 features (concepts, ranges, std::format)
+          
+          ### Installation
+          
+          #### Debian/Ubuntu Packages
+          Download the `.deb` packages from the assets below:
+          - `kagome-rspamd-tokenizer_*.deb` - Rspamd plugin (main package)
+          - `kagome-dict-ipa_*.deb` - Required dictionary data
+          - `kagome-tools_*.deb` - Command-line utilities
+          - `libkagome-cpp-dev_*.deb` - Development headers and libraries
+          
+          ```bash
+          sudo dpkg -i kagome-*.deb
+          sudo apt-get install -f  # Fix any dependency issues
+          ```
+          
+          #### From Source
+          ```bash
+          git clone https://github.com/rspamd/kagome-cxx.git
+          cd kagome-cxx
+          mkdir build && cd build
+          cmake ..
+          make -j$(nproc)
+          ```
+          
+          ### Rspamd Integration
+          
+          Add to `/etc/rspamd/local.d/options.inc`:
+          ```
+          custom_tokenizers {
+              kagome {
+                  enabled = true;
+                  path = "/usr/lib/x86_64-linux-gnu/rspamd/plugins/kagome_rspamd_tokenizer.so";
+                  priority = 60.0;
+              }
+          }
+          ```
+          
+          Then restart Rspamd: `sudo systemctl restart rspamd`
+          
+          See [RSPAMD_INTEGRATION.md](https://github.com/rspamd/kagome-cxx/blob/main/RSPAMD_INTEGRATION.md) for detailed setup instructions.
+          
+          ### Documentation
+          - [README.md](https://github.com/rspamd/kagome-cxx/blob/main/README.md) - Project overview
+          - [RSPAMD_INTEGRATION.md](https://github.com/rspamd/kagome-cxx/blob/main/RSPAMD_INTEGRATION.md) - Rspamd setup guide  
+          - [DICTIONARY.md](https://github.com/rspamd/kagome-cxx/blob/main/DICTIONARY.md) - Dictionary documentation
+          - [BUILD.md](https://github.com/rspamd/kagome-cxx/blob/main/BUILD.md) - Build instructions
+          - [CONTRIBUTING.md](https://github.com/rspamd/kagome-cxx/blob/main/CONTRIBUTING.md) - Development guidelines
+        draft: false
+        prerelease: false
+
+  build-release-packages:
+    name: Build Release Packages
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          pkg-config \
+          libicu-dev \
+          libfmt-dev \
+          libarchive-dev \
+          devscripts \
+          debhelper
+    
+    - name: Update package version
+      run: |
+        # Update CMakeLists.txt version
+        sed -i "s/VERSION [0-9.]\+/VERSION ${{ steps.version.outputs.version }}/" CMakeLists.txt
+        
+        # Update debian changelog
+        dch --newversion "${{ steps.version.outputs.version }}-1" \
+            --distribution stable \
+            "Release version ${{ steps.version.outputs.version }}"
+    
+    - name: Build Debian packages
+      run: |
+        dpkg-buildpackage -us -uc
+    
+    - name: Prepare artifacts
+      run: |
+        mkdir -p release-artifacts
+        cp ../kagome-*.deb release-artifacts/
+        
+        # Create checksums
+        cd release-artifacts
+        sha256sum *.deb > SHA256SUMS
+        
+        # Create package list
+        ls -la *.deb > PACKAGES.txt
+    
+    - name: Upload Release Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-packages-${{ steps.version.outputs.version }}
+        path: release-artifacts/
+        retention-days: 30
+
+  build-release-binaries:
+    name: Build Release Binaries
+    runs-on: ${{ matrix.os }}
+    if: startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: linux-x86_64
+            cmake_flags: "-DCMAKE_BUILD_TYPE=Release"
+          - os: ubuntu-20.04  
+            name: linux-x86_64-ubuntu20
+            cmake_flags: "-DCMAKE_BUILD_TYPE=Release"
+          - os: macos-latest
+            name: macos-universal
+            cmake_flags: "-DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          pkg-config \
+          libicu-dev \
+          libfmt-dev \
+          libarchive-dev
+    
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        brew install cmake fmt icu4c libarchive pkg-config
+    
+    - name: Configure CMake
+      run: |
+        if [[ "${{ runner.os }}" == "macOS" ]]; then
+          export PKG_CONFIG_PATH="/opt/homebrew/opt/icu4c/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
+        fi
+        
+        cmake -B build ${{ matrix.cmake_flags }}
+    
+    - name: Build
+      run: |
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          cmake --build build --config Release -j $(nproc)
+        else
+          cmake --build build --config Release -j $(sysctl -n hw.ncpu)
+        fi
+    
+    - name: Test
+      working-directory: build
+      run: |
+        ctest --output-on-failure
+        ./kagome_tests
+    
+    - name: Package binaries
+      run: |
+        mkdir -p kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}
+        
+        # Copy main artifacts
+        cp build/kagome_rspamd_tokenizer.* kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}/
+        cp build/kagome_main kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}/
+        cp build/kagome_tests kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}/
+        cp data/ipa/ipa.dict kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}/
+        
+        # Copy documentation
+        cp README.md RSPAMD_INTEGRATION.md LICENSE kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}/
+        
+        # Create archive
+        tar czf kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}.tar.gz \
+            kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}/
+        
+        # Create checksums
+        sha256sum kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}.tar.gz > \
+            kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}.tar.gz.sha256
+    
+    - name: Upload Binary Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: binaries-${{ matrix.name }}-${{ steps.version.outputs.version }}
+        path: |
+          kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}.tar.gz
+          kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}.tar.gz.sha256
+        retention-days: 30
+
+  upload-to-release:
+    name: Upload to GitHub Release
+    runs-on: ubuntu-22.04
+    needs: [create-release, build-release-packages, build-release-binaries]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+    
+    - name: Display structure
+      run: find artifacts/ -type f -ls
+    
+    - name: Upload Debian packages to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: artifacts/release-packages-${{ steps.version.outputs.version }}/kagome-rspamd-tokenizer_${{ steps.version.outputs.version }}-1_amd64.deb
+        asset_name: kagome-rspamd-tokenizer_${{ steps.version.outputs.version }}-1_amd64.deb
+        asset_content_type: application/vnd.debian.binary-package
+    
+    - name: Upload checksums to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: artifacts/release-packages-${{ steps.version.outputs.version }}/SHA256SUMS
+        asset_name: SHA256SUMS
+        asset_content_type: text/plain

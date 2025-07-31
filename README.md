@@ -1,6 +1,17 @@
 # Kagome C++ - Japanese Morphological Analyzer
 
-A modern C++ implementation of the Japanese morphological analyzer kagome, originally written in Go. This implementation uses C++23 features and modern libraries for high-performance Japanese text tokenization.
+[![CI](https://github.com/rspamd/kagome-cxx/workflows/CI/badge.svg)](https://github.com/rspamd/kagome-cxx/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/rspamd/kagome-cxx/workflows/CodeQL/badge.svg)](https://github.com/rspamd/kagome-cxx/actions/workflows/codeql.yml)
+[![Release](https://github.com/rspamd/kagome-cxx/workflows/Release/badge.svg)](https://github.com/rspamd/kagome-cxx/actions/workflows/release.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+---
+
+**Sponsored by [TwoFive Inc.](https://www.twofive25.com/)** - Japan's leading email security company, specializing in messaging systems and security solutions.
+
+---
+
+A modern C++ implementation of the Japanese morphological analyzer [kagome](https://github.com/ikawaha/kagome), originally written in Go by [ikawaha](https://github.com/ikawaha). This implementation uses C++23 features and modern libraries for high-performance Japanese text tokenization and provides seamless integration with [Rspamd](https://rspamd.com/) mail processing system.
 
 ## Features
 
@@ -203,41 +214,84 @@ Leverages libicu for:
 - Script detection
 - Unicode normalization
 
-## Performance
+## Rspamd Integration
 
-The C++ implementation provides significant performance improvements over the original Go version:
+This library provides a shared library plugin for [Rspamd](https://rspamd.com/) mail processing system, enabling Japanese text tokenization for spam detection and email classification.
 
-- **Memory Usage**: ~60% reduction through object pooling and efficient data structures
-- **Speed**: ~3-4x faster tokenization through optimized algorithms and data structures
-- **Cache Performance**: Better cache locality with unordered_dense hash tables
+### Quick Setup
+```bash
+# Build the plugin
+mkdir build && cd build
+cmake ..
+make -j4
 
-## Comparison with Original Go Implementation
+# Install dictionary (place next to the library)
+cp ../data/ipa/ipa.dict ./ipa.dict
 
-| Feature | Go Version | C++ Version |
-|---------|------------|-------------|
-| Language | Go 1.19+ | C++23 |
-| Memory Management | GC | RAII + Object Pools |
-| Hash Tables | map | unordered_dense |
-| Unicode | Go strings | libicu |
-| Formatting | fmt.Printf | std::format |
-| Performance | Baseline | 3-4x faster |
-| Memory Usage | Baseline | ~40% less |
+# Configure Rspamd
+echo 'custom_tokenizers {
+    kagome {
+        enabled = true;
+        path = "/path/to/kagome_rspamd_tokenizer.so";
+        priority = 60.0;
+    }
+}' >> /etc/rspamd/local.d/options.inc
+
+# Restart Rspamd
+sudo systemctl restart rspamd
+```
+
+For detailed integration instructions, see [RSPAMD_INTEGRATION.md](RSPAMD_INTEGRATION.md).
+
 
 ## Contributing
 
-1. Follow modern C++ best practices
-2. Use C++23 features where appropriate
-3. Maintain API compatibility with the original Go version
-4. Add comprehensive tests for new features
-5. Document public interfaces
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+**Project Sponsors**: See [SPONSORS.md](SPONSORS.md) for our amazing sponsors who make this project possible.
+
+**Quick Start for Contributors:**
+1. Follow modern C++ best practices (C++23 features encouraged)
+2. Maintain API compatibility with the original Go version
+3. Add comprehensive tests for new features  
+4. Document public interfaces with examples
+5. Ensure CI passes (see [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md) for CI details)
+
+**Development Workflow:**
+```bash
+# Fork and clone the repository
+git clone https://github.com/YOUR_USERNAME/kagome-cxx.git
+cd kagome-cxx
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+
+# Build and test
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+ctest
+
+# Submit pull request
+```
 
 ## License
 
-MIT License - same as the original kagome project.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) file for details.
+
+This project is based on the original [kagome](https://github.com/ikawaha/kagome) project by ikawaha.
+
+## Sponsors
+
+This project is proudly sponsored by:
+
+### [TwoFive Inc.](https://www.twofive25.com/)
+**Japan's leading email security company** - TwoFive specializes in messaging systems, email security solutions, and infrastructure consulting. As experts in large-scale email systems and Japanese text processing, they recognize the importance of advanced Japanese tokenization for email security and spam detection.
 
 ## Acknowledgments
 
-- Original [kagome](https://github.com/ikawaha/kagome) project by ikawaha
-- [unordered_dense](https://github.com/martinus/unordered_dense) by martinus
-- [fmtlib](https://github.com/fmtlib/fmt) formatting library
-- [ICU](https://icu.unicode.org/) Unicode library 
+- **Sponsorship**: [TwoFive Inc.](https://www.twofive25.com/) for supporting Japanese email security innovation
+- **Original Implementation**: [kagome](https://github.com/ikawaha/kagome) project by ikawaha
+- **Performance Libraries**: [unordered_dense](https://github.com/martinus/unordered_dense) by martinus
+- **Formatting**: [fmtlib](https://github.com/fmtlib/fmt) formatting library
+- **Unicode Support**: [ICU](https://icu.unicode.org/) Unicode library 

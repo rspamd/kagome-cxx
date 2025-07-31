@@ -1,0 +1,3 @@
+usr/include/*
+usr/lib/*/libkagome_cpp.a
+usr/lib/*/libkagome_c_api.a

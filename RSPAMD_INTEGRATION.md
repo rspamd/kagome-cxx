@@ -1,6 +1,26 @@
 # Kagome Japanese Tokenizer Integration with Rspamd
 
-This document describes how to integrate the Kagome Japanese tokenizer with Rspamd for improved Japanese text analysis.
+*Sponsored by [TwoFive Inc.](https://www.twofive25.com/) - Japan's leading email security company*
+
+This document describes how to integrate the Kagome C++ Japanese tokenizer with [Rspamd](https://rspamd.com/) for improved Japanese text analysis in email processing.
+
+## Installation Options
+
+### Option 1: Package Installation (Recommended)
+
+When available, install via your distribution's package manager:
+
+```bash
+# Debian/Ubuntu
+sudo apt update
+sudo apt install kagome-rspamd-tokenizer kagome-dict-ipa
+
+# The plugin will be automatically installed to:
+# /usr/lib/x86_64-linux-gnu/rspamd/plugins/kagome_rspamd_tokenizer.so
+# Dictionary: /usr/share/kagome/ipa.dict
+```
+
+### Option 2: Manual Build and Installation
 
 ## Quick Setup
 
@@ -48,6 +68,26 @@ The tokenizer will search these locations automatically:
 
 Add the following to your rspamd configuration (e.g., `/etc/rspamd/local.d/options.inc`):
 
+#### For Package Installation:
+```ucl
+# Enable custom tokenizers
+custom_tokenizers {
+    # Japanese tokenizer using Kagome
+    kagome {
+        enabled = true;
+        path = "/usr/lib/x86_64-linux-gnu/rspamd/plugins/kagome_rspamd_tokenizer.so";
+        priority = 60.0;  # Higher priority than default tokenizer
+        
+        # Optional: tokenizer-specific config
+        config {
+            # Currently, config is ignored by kagome tokenizer
+            # Dictionary path is auto-detected from /usr/share/kagome/ipa.dict
+        }
+    }
+}
+```
+
+#### For Manual Installation:
 ```ucl
 # Enable custom tokenizers
 custom_tokenizers {

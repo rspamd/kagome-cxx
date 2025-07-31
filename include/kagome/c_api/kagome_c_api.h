@@ -43,7 +43,7 @@ typedef struct rspamd_word {
     unsigned int flags;
 } rspamd_word_t;
 
-typedef struct rspamd_words {
+typedef struct rspamd_words_s {
     size_t n;
     size_t m;
     rspamd_word_t *a;

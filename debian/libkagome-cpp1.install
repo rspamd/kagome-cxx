@@ -1,0 +1,2 @@
+# Static libraries are included in the -dev package
+# This package would contain shared libraries if we created them

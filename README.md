@@ -98,7 +98,7 @@ int main() {
                                return a + "," + b;
                            });
         
-        std::cout << std::format("{}\t{}\n", token.surface(), features_str);
+        std::cout << kagome::format("{}\t{}\n", token.surface(), features_str);
     }
     
     return 0;
@@ -195,7 +195,7 @@ auto tokens = tokenizer.analyze_graph(dot_file, "私は猫",
 
 - **Concepts**: Type constraints for template parameters
 - **Ranges**: STL ranges for efficient iteration
-- **std::format**: Type-safe string formatting
+- **fmt formatting**: Type-safe string formatting via libfmt
 - **std::optional**: Null-safe optional values
 - **Smart Pointers**: RAII memory management
 - **Move Semantics**: Efficient resource management

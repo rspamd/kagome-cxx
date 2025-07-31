@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <format>
+#include "kagome/common/format.hpp"
 
 #include "kagome/tokenizer/tokenizer.hpp"
 #include "kagome/dict/dict.hpp"
@@ -34,7 +34,7 @@ void print_tokens_table(const std::vector<kagome::tokenizer::Token>& tokens) {
             }
         }
         
-        std::cout << std::format("{}\t{}\n", token.surface(), features_str);
+        std::cout << kagome::format("{}\t{}\n", token.surface(), features_str);
     }
     std::cout << "EOS\n";
 }
@@ -56,27 +56,27 @@ void print_tokens_json(const std::vector<kagome::tokenizer::Token>& tokens) {
         
         auto data = token.to_token_data();
         std::cout << "  {\n";
-        std::cout << std::format("    \"id\": {},\n", data.id);
-        std::cout << std::format("    \"start\": {},\n", data.start);
-        std::cout << std::format("    \"end\": {},\n", data.end);
-        std::cout << std::format("    \"surface\": \"{}\",\n", data.surface);
-        std::cout << std::format("    \"class\": \"{}\",\n", data.token_class);
+        std::cout << kagome::format("    \"id\": {},\n", data.id);
+        std::cout << kagome::format("    \"start\": {},\n", data.start);
+        std::cout << kagome::format("    \"end\": {},\n", data.end);
+        std::cout << kagome::format("    \"surface\": \"{}\",\n", data.surface);
+        std::cout << kagome::format("    \"class\": \"{}\",\n", data.token_class);
         
         std::cout << "    \"pos\": [";
         for (std::size_t i = 0; i < data.pos.size(); ++i) {
             if (i > 0) std::cout << ", ";
-            std::cout << std::format("\"{}\"", data.pos[i]);
+            std::cout << kagome::format("\"{}\"", data.pos[i]);
         }
         std::cout << "],\n";
         
-        std::cout << std::format("    \"base_form\": \"{}\",\n", data.base_form);
-        std::cout << std::format("    \"reading\": \"{}\",\n", data.reading);
-        std::cout << std::format("    \"pronunciation\": \"{}\",\n", data.pronunciation);
+        std::cout << kagome::format("    \"base_form\": \"{}\",\n", data.base_form);
+        std::cout << kagome::format("    \"reading\": \"{}\",\n", data.reading);
+        std::cout << kagome::format("    \"pronunciation\": \"{}\",\n", data.pronunciation);
         
         std::cout << "    \"features\": [";
         for (std::size_t i = 0; i < data.features.size(); ++i) {
             if (i > 0) std::cout << ", ";
-            std::cout << std::format("\"{}\"", data.features[i]);
+            std::cout << kagome::format("\"{}\"", data.features[i]);
         }
         std::cout << "]\n";
         

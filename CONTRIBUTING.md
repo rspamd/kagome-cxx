@@ -94,7 +94,7 @@ brew install llvm  # for clang-tidy and clang-format
 - **C++23 Standard**: Use modern C++23 features where appropriate
 - **Concepts**: Use concepts for template constraints
 - **Ranges**: Prefer ranges over traditional iterator-based loops
-- **std::format**: Use for string formatting instead of printf/iostream
+- **fmt formatting**: Use kagome::format (fmt::format) for string formatting instead of printf/iostream
 - **std::optional**: Use for nullable values
 - **Smart Pointers**: Use RAII and smart pointers for memory management
 
@@ -156,11 +156,11 @@ private:
 
 ### Modern C++ Guidelines
 
-#### Use of std::format
+#### Use of fmt formatting
 
 ```cpp
-// Good: Use std::format
-auto message = std::format("Processing {} tokens", token_count);
+// Good: Use kagome::format (which is fmt::format)
+auto message = kagome::format("Processing {} tokens", token_count);
 
 // Avoid: printf-style formatting
 char buffer[256];

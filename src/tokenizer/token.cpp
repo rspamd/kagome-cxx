@@ -1,9 +1,8 @@
 #include "kagome/tokenizer/token.hpp"
 #include <unicode/ustring.h>
 #include <unicode/utf8.h>
-#include <format>
+#include "kagome/common/format.hpp"
 #include <algorithm>
-#include <fmt/core.h>
 
 namespace kagome::tokenizer {
 
@@ -309,7 +308,7 @@ TokenData Token::to_token_data() const {
 }
 
 std::string Token::to_string() const {
-    return std::format("{}:\"{}\" ({}: {}, {}) {} [{}]",
+    return kagome::format("{}:\"{}\" ({}: {}, {}) {} [{}]",
                       index_, surface_, position_, start_, end_, 
                       kagome::tokenizer::to_string(class_), id_);
 }

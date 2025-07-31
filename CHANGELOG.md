@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Runtime Memory**: ~100-150MB for loaded dictionary
 
 ### Technical Highlights
-- **Modern C++ Features**: Extensive use of concepts, ranges, std::format, and smart pointers
+- **Modern C++ Features**: Extensive use of concepts, ranges, fmt formatting, and smart pointers
 - **Efficient Hash Tables**: 4x faster than std::unordered_map with unordered_dense
 - **Object Pooling**: Memory-efficient token and node management
 - **RAII Memory Management**: Exception-safe resource handling

@@ -43,7 +43,7 @@ jobs:
           - Memory efficient (40% less usage than Go version)
           - Seamless Rspamd integration for Japanese email processing
           - Complete IPA dictionary support
-          - Modern C++23 features (concepts, ranges, std::format)
+          - Modern C++23 features (concepts, ranges, fmt formatting)
           
           ### Installation
           

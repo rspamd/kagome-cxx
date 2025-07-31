@@ -4,7 +4,7 @@
 #include <string_view>
 #include <vector>
 #include <optional>
-#include <format>
+#include "kagome/common/format.hpp"
 #include <memory>
 
 #include "kagome/dict/dict.hpp"

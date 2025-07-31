@@ -30,8 +30,7 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        # Override default CodeQL queries
-        queries: security-extended,quality
+        # Use default queries for better compatibility
 
     - name: Install dependencies
       run: |

@@ -87,7 +87,7 @@ std::vector<Token> Tokenizer::analyze_impl(std::string_view input,
 	lattice->build(input);
 
 	// Forward pass (Viterbi algorithm)
-	lattice::LatticeMode lattice_mode = lattice::LatticeMode::Normal; // Default to Normal
+	lattice::LatticeMode lattice_mode = lattice::LatticeMode::Normal;// Default to Normal
 	switch (mode) {
 	case TokenizeMode::Normal:
 		lattice_mode = lattice::LatticeMode::Normal;

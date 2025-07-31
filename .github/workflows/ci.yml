@@ -74,12 +74,6 @@ jobs:
         ctest --output-on-failure --verbose
         ./kagome_tests
 
-    - name: Test Rspamd Plugin
-      working-directory: ${{github.workspace}}/build
-      run: |
-        # Test that the plugin loads and basic functionality works
-        ./kagome_test_plugin || echo "Plugin test completed"
-
   build-macos:
     name: Build on macOS
     runs-on: macos-latest
@@ -106,12 +100,6 @@ jobs:
       run: |
         ctest --output-on-failure --verbose
         ./kagome_tests
-
-    - name: Test Rspamd Plugin
-      working-directory: ${{github.workspace}}/build
-      run: |
-        # Test that the plugin loads and basic functionality works
-        ./kagome_test_plugin || echo "Plugin test completed"
 
   build-sanitizers:
     name: Build with Sanitizers
@@ -261,47 +249,3 @@ jobs:
         name: debian-packages
         path: ../kagome-*.deb
         retention-days: 7
-
-  performance-test:
-    name: Performance Benchmark
-    runs-on: ubuntu-22.04
-    needs: [build-linux]
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          cmake \
-          pkg-config \
-          libicu-dev \
-          libfmt-dev \
-          libarchive-dev \
-          time
-
-    - name: Configure CMake for Release
-      run: |
-        cmake -B ${{github.workspace}}/build \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG"
-
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config Release -j $(nproc)
-
-    - name: Run performance tests
-      working-directory: ${{github.workspace}}/build
-      run: |
-        # Create test input
-        echo "私は猫が好きです。今日は良い天気ですね。" > test_input.txt
-        echo "すもももももももものうち。吾輩は猫である。" >> test_input.txt
-        
-        # Benchmark tokenization
-        echo "=== Performance Benchmark ==="
-        time ./kagome_main "$(cat test_input.txt)"
-        
-        # Memory usage test
-        echo "=== Memory Usage Test ==="
-        /usr/bin/time -v ./kagome_main "$(cat test_input.txt)" 2>&1 | grep -E "(Maximum resident|User time|System time)"

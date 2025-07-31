@@ -43,8 +43,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(unordered_dense)
 
-# Ensure unordered_dense is compiled with -fPIC for shared library compatibility
-set_target_properties(unordered_dense PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# Ensure unordered_dense is compiled with -fPIC for shared library compatibility (if target exists)
+if(TARGET unordered_dense)
+    set_target_properties(unordered_dense PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
 
 # Create the main library
 add_library(kagome_cpp STATIC

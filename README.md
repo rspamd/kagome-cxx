@@ -50,7 +50,7 @@ brew install cmake fmt icu4c pkg-config
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd kagome
+cd kagome-cxx
 
 # Create build directory
 mkdir build && cd build
@@ -66,6 +66,8 @@ ctest
 
 # Or run tests directly
 ./kagome_tests
+
+
 ```
 
 ## Usage

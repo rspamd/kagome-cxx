@@ -90,6 +90,8 @@ cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
 cmake -DCMAKE_BUILD_TYPE=MinSizeRel ..
 ```
 
+
+
 #### Custom Installation Prefix
 ```bash
 cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
@@ -156,13 +158,13 @@ make kagome_rspamd_tokenizer
 ### Command Line Tools
 ```bash
 make kagome_main
-make kagome_debug_tokenizer
 make kagome_tests
 ```
 
 ### All Executables
 ```bash
-make kagome_main kagome_debug_tokenizer kagome_simple_test
+# All production executables
+make kagome_main kagome_tests
 ```
 
 ## Cross-Compilation

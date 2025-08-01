@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 #include <limits>
 #include <algorithm>
+#include <ankerl/unordered_dense.h>
 
 namespace kagome::tokenizer::lattice {
 
@@ -474,16 +475,24 @@ void Lattice::export_dot(std::ostream &output) const
 
 void Lattice::clear()
 {
-	// Return all nodes to pool
+	// Return all nodes to pool, avoiding duplicates
+	ankerl::unordered_dense::set<Node *> returned_nodes;
+
+	// Return nodes from node_list_
 	for (auto &node_vec: node_list_) {
 		for (Node *node: node_vec) {
-			node_pool_.put(node);
+			if (returned_nodes.insert(node).second) {
+				node_pool_.put(node);
+			}
 		}
 		node_vec.clear();
 	}
 
+	// Return nodes from output_ (skip if already returned)
 	for (Node *node: output_) {
-		node_pool_.put(node);
+		if (returned_nodes.insert(node).second) {
+			node_pool_.put(node);
+		}
 	}
 
 	node_list_.clear();

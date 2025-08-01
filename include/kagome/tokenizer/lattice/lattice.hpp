@@ -70,7 +70,10 @@ public:
 	Lattice(std::shared_ptr<dict::Dict> dictionary,
 			std::shared_ptr<dict::UserDict> user_dictionary = nullptr);
 
-	~Lattice() = default;
+	~Lattice()
+	{
+		clear();
+	}
 
 	// Non-copyable but movable
 	Lattice(const Lattice &) = delete;

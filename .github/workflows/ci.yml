@@ -243,9 +243,12 @@ jobs:
         test -f /usr/share/kagome/ipa.dict
         echo "Package installation test completed"
 
+    - name: Copy packages for upload
+      run: cp ../kagome-*.deb .
+
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
       with:
         name: debian-packages
-        path: ../kagome-*.deb
+        path: kagome-*.deb
         retention-days: 7

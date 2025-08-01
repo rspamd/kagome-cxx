@@ -1,3 +1,1 @@
-usr/bin/kagome_main
-usr/bin/kagome_debug_tokenizer
-usr/bin/kagome_tests
+usr/bin/*

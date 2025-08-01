@@ -101,7 +101,6 @@ Description: Command-line tools for Japanese morphological analysis
  .
  Included tools:
   * kagome_main - Interactive and batch text analysis
-  * kagome_debug_tokenizer - Debugging and visualization tools
   * kagome_tests - Test suite for validation
  .
  The tools support multiple tokenization modes, JSON output, and lattice

@@ -24,6 +24,9 @@ pkg_check_modules(LIBARCHIVE REQUIRED libarchive)
 # Add dependencies via FetchContent
 include(FetchContent)
 
+# Disable installation of FetchContent dependencies
+set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
+
 # Add fmt library
 FetchContent_Declare(
     fmt
@@ -153,4 +156,34 @@ target_link_libraries(kagome_tests PRIVATE
     kagome_cpp
 )
 
-add_test(NAME kagome_tests COMMAND kagome_tests) 
+add_test(NAME kagome_tests COMMAND kagome_tests)
+
+# Installation rules
+include(GNUInstallDirs)
+
+# Install libraries
+install(TARGETS kagome_cpp kagome_c_api
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+# Install headers
+install(DIRECTORY include/kagome
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
+
+# Install executables
+install(TARGETS kagome_main kagome_tests
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Install Rspamd plugin
+install(TARGETS kagome_rspamd_tokenizer
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+# Install dictionary
+install(FILES data/ipa/ipa.dict
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/kagome
+) 

@@ -26,17 +26,9 @@ override_dh_auto_configure:
 
 override_dh_auto_install:
 	dh_auto_install
-	# Install the dictionary to the standard location
-	install -d $(CURDIR)/debian/kagome-dict-ipa/usr/share/kagome
-	install -m 644 data/ipa/ipa.dict $(CURDIR)/debian/kagome-dict-ipa/usr/share/kagome/
-	# Install the rspamd plugin to appropriate directory
+	# Move Rspamd plugin to appropriate directory
 	install -d $(CURDIR)/debian/kagome-rspamd-tokenizer/usr/lib/$(DEB_HOST_MULTIARCH)/rspamd/plugins
-	install -m 755 $(CURDIR)/obj-*/kagome_rspamd_tokenizer.so $(CURDIR)/debian/kagome-rspamd-tokenizer/usr/lib/$(DEB_HOST_MULTIARCH)/rspamd/plugins/
-	# Install tools
-	install -d $(CURDIR)/debian/kagome-tools/usr/bin
-	install -m 755 $(CURDIR)/obj-*/kagome_main $(CURDIR)/debian/kagome-tools/usr/bin/
-	install -m 755 $(CURDIR)/obj-*/kagome_debug_tokenizer $(CURDIR)/debian/kagome-tools/usr/bin/
-	install -m 755 $(CURDIR)/obj-*/kagome_tests $(CURDIR)/debian/kagome-tools/usr/bin/
+	mv $(CURDIR)/debian/tmp/usr/lib/*/kagome_rspamd_tokenizer.* $(CURDIR)/debian/kagome-rspamd-tokenizer/usr/lib/$(DEB_HOST_MULTIARCH)/rspamd/plugins/
 
 override_dh_missing:
 	dh_missing --fail-missing

@@ -3,7 +3,7 @@ Section: libs
 Priority: optional
 Maintainer: Kagome C++ Team <support@example.com>
 Build-Depends: debhelper-compat (= 13),
-               cmake (>= 3.25),
+               cmake (>= 3.22),
                pkg-config,
                libicu-dev,
                libfmt-dev,

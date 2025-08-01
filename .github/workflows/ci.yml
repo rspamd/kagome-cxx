@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04]
+        os: [ubuntu-22.04]
         compiler:
           - { name: "GCC 12", cc: gcc-12, cxx: g++-12 }
           - { name: "GCC 11", cc: gcc-11, cxx: g++-11 }

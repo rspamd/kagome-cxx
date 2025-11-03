@@ -148,7 +148,7 @@ jobs:
         ls -la *.deb > PACKAGES.txt
     
     - name: Upload Release Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: release-packages-${{ steps.version.outputs.version }}
         path: release-artifacts/
@@ -242,7 +242,7 @@ jobs:
             kagome-${{ steps.version.outputs.version }}-${{ matrix.name }}.tar.gz.sha256
     
     - name: Upload Binary Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: binaries-${{ matrix.name }}-${{ steps.version.outputs.version }}
         path: |

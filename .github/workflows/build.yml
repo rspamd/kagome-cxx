@@ -52,6 +52,32 @@
             "version": "${{ inputs.version }}"
          }
       },
+      "centos-8-build-ARM64": {
+         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'centos-8'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'ARM64'))) }}",
+         "uses": "./.github/workflows/build_packages.yml",
+         "with": {
+            "asan": "${{ inputs.asan }}",
+            "branch": "${{ inputs.branch }}",
+            "experimental": "${{ inputs.experimental }}",
+            "name": "centos-8",
+            "platform": "ARM64",
+            "repo": "${{ inputs.repo }}",
+            "version": "${{ inputs.version }}"
+         }
+      },
+      "centos-8-build-X64": {
+         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'centos-8'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'X64'))) }}",
+         "uses": "./.github/workflows/build_packages.yml",
+         "with": {
+            "asan": "${{ inputs.asan }}",
+            "branch": "${{ inputs.branch }}",
+            "experimental": "${{ inputs.experimental }}",
+            "name": "centos-8",
+            "platform": "X64",
+            "repo": "${{ inputs.repo }}",
+            "version": "${{ inputs.version }}"
+         }
+      },
       "debian-bookworm-build-ARM64": {
          "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'debian-bookworm'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'ARM64'))) }}",
          "uses": "./.github/workflows/build_packages.yml",
@@ -73,6 +99,32 @@
             "branch": "${{ inputs.branch }}",
             "experimental": "${{ inputs.experimental }}",
             "name": "debian-bookworm",
+            "platform": "X64",
+            "repo": "${{ inputs.repo }}",
+            "version": "${{ inputs.version }}"
+         }
+      },
+      "debian-bullseye-build-ARM64": {
+         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'debian-bullseye'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'ARM64'))) }}",
+         "uses": "./.github/workflows/build_packages.yml",
+         "with": {
+            "asan": "${{ inputs.asan }}",
+            "branch": "${{ inputs.branch }}",
+            "experimental": "${{ inputs.experimental }}",
+            "name": "debian-bullseye",
+            "platform": "ARM64",
+            "repo": "${{ inputs.repo }}",
+            "version": "${{ inputs.version }}"
+         }
+      },
+      "debian-bullseye-build-X64": {
+         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'debian-bullseye'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'X64'))) }}",
+         "uses": "./.github/workflows/build_packages.yml",
+         "with": {
+            "asan": "${{ inputs.asan }}",
+            "branch": "${{ inputs.branch }}",
+            "experimental": "${{ inputs.experimental }}",
+            "name": "debian-bullseye",
             "platform": "X64",
             "repo": "${{ inputs.repo }}",
             "version": "${{ inputs.version }}"

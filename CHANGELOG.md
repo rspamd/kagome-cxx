@@ -5,6 +5,13 @@ All notable changes to the Kagome C++ project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-02-13
+
+### Fixed
+- **Rspamd STEMMED Flag**: Added `RSPAMD_WORD_FLAG_STEMMED` to token flags so Rspamd recognizes and uses kagome's base_form instead of overwriting it with fallback normalization
+  - Kagome's morphological analysis (e.g., 行った→行く) is now properly utilized by Rspamd
+  - Previously Rspamd's `rspamd_stem_words()` would ignore kagome's stemmed forms since no Japanese Snowball stemmer exists
+
 ## [1.0.1] - 2025-11-03
 
 ### Fixed

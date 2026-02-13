@@ -10,12 +10,18 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <cstddef>
 #include <iostream>
 #include <filesystem>
 #include <dlfcn.h>
+#ifdef __APPLE__
+#include <malloc/malloc.h>
+#include <mach/mach.h>
+#endif
 #include <unicode/utf8.h>
 #include <unicode/ustring.h>
 #include <unicode/uscript.h>
+#include <unicode/uclean.h>
 
 namespace {
 // Global tokenizer instance
@@ -242,6 +248,35 @@ void kagome_deinit(void)
 	// Clear the global lattice node pool to prevent memory accumulation
 	// in long-running processes (e.g., Rspamd)
 	kagome::tokenizer::lattice::Lattice::clear_global_pool();
+	// Release ICU caches created during tokenization passes
+	u_cleanup();
+
+#ifdef __APPLE__
+	// Encourage the allocator to release freed pages back to the OS so that
+    // repeated init/deinit cycles do not look like a leak when monitoring RSS.
+	malloc_zone_pressure_relief(nullptr, 0);
+
+	if (auto *default_zone = malloc_default_zone()) {
+		malloc_zone_pressure_relief(default_zone, 0);
+	}
+
+	if (auto *purgeable_zone = malloc_default_purgeable_zone()) {
+		malloc_zone_pressure_relief(purgeable_zone, 0);
+	}
+
+	// Some subsystems (notably libdispatch) may create additional malloc zones.
+	// Iterate over all registered zones and request pressure relief on each.
+	vm_address_t *zones = nullptr;
+	unsigned int zone_count = 0;
+	if (malloc_get_all_zones(mach_task_self(), nullptr, &zones, &zone_count) == KERN_SUCCESS && zones != nullptr) {
+		for (unsigned int i = 0; i < zone_count; ++i) {
+			auto *zone = reinterpret_cast<malloc_zone_t *>(zones[i]);
+			if (zone) {
+				malloc_zone_pressure_relief(zone, 0);
+			}
+		}
+	}
+#endif
 }
 
 double kagome_detect_language(const char *text, size_t len)
@@ -405,7 +440,7 @@ int kagome_tokenize(const char *text, size_t len, rspamd_words_t *result)
 			// CRITICAL: Always point to original text buffer
 			word.original.begin = text + pos;
 			word.original.len = surface.length();
-			word.flags = RSPAMD_WORD_FLAG_TEXT | RSPAMD_WORD_FLAG_UTF | RSPAMD_WORD_FLAG_NORMALISED;
+			word.flags = RSPAMD_WORD_FLAG_TEXT | RSPAMD_WORD_FLAG_UTF | RSPAMD_WORD_FLAG_NORMALISED | RSPAMD_WORD_FLAG_STEMMED;
 
 			// Get base form once to avoid multiple string copies
 			std::string base_form;

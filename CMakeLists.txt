@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(kagome_cpp VERSION 1.0.1 LANGUAGES CXX)
+project(kagome_cpp VERSION 1.0.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -126,7 +126,7 @@ target_link_libraries(kagome_rspamd_tokenizer PRIVATE
 
 # Set proper SONAME and version for the shared library
 set_target_properties(kagome_rspamd_tokenizer PROPERTIES
-    VERSION 1.0.0
+    VERSION 1.0.2
     SOVERSION 1
     OUTPUT_NAME "kagome_rspamd_tokenizer"
     PREFIX ""

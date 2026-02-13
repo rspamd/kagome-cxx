@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### Core Features
-- **Modern C++23 Implementation**: Complete rewrite of the original Go kagome tokenizer
+- **Modern C++20 Implementation**: Complete rewrite of the original Go kagome tokenizer
 - **High-Performance Tokenization**: 3-4x faster than original Go implementation
 - **Memory Efficiency**: ~40% less memory usage through object pooling and efficient data structures
 - **Multiple Tokenization Modes**: Support for Normal, Search, and Extended tokenization modes
@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Robust Error Handling**: Graceful fallback when dictionary loading fails
 
 #### APIs and Tools
-- **C++ API**: Modern C++23 interface with concepts and ranges
+- **C++ API**: Modern C++20 interface with concepts and ranges
 - **C API**: Stable C interface for interoperability
 - **Command Line Tools**: Interactive and batch processing utilities
 - **JSON Output Support**: Machine-readable output format
@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **License Compliance**: Apache 2.0 license with proper attribution
 
 ### Dependencies
-- **C++23 Compiler**: GCC 12+, Clang 15+, or MSVC 2022+
+- **C++20 Compiler**: GCC 11+, Clang 12+, or MSVC 2022+
 - **CMake**: Version 3.25 or later
 - **libicu**: Unicode and UTF-8 handling
 - **libfmt**: Modern string formatting (automatically fetched)

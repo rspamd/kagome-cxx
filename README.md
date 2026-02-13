@@ -11,11 +11,11 @@
 
 ---
 
-A modern C++ implementation of the Japanese morphological analyzer [kagome](https://github.com/ikawaha/kagome), originally written in Go by [ikawaha](https://github.com/ikawaha). This implementation uses C++23 features and modern libraries for high-performance Japanese text tokenization and provides seamless integration with [Rspamd](https://rspamd.com/) mail processing system.
+A modern C++ implementation of the Japanese morphological analyzer [kagome](https://github.com/ikawaha/kagome), originally written in Go by [ikawaha](https://github.com/ikawaha). This implementation uses C++20 features and modern libraries for high-performance Japanese text tokenization and provides seamless integration with [Rspamd](https://rspamd.com/) mail processing system.
 
 ## Features
 
-- **Modern C++23**: Uses the latest C++ standard features including concepts, ranges, and format library
+- **Modern C++20**: Uses the latest C++ standard features including concepts, ranges, and format library
 - **High Performance**: Efficient hash tables from [unordered_dense](https://github.com/martinus/unordered_dense)
 - **Unicode Support**: Proper UTF-8/Unicode handling with libicu
 - **Multiple Tokenization Modes**: Normal, Search, and Extended modes
@@ -25,7 +25,7 @@ A modern C++ implementation of the Japanese morphological analyzer [kagome](http
 
 ## Dependencies
 
-- **C++23 compatible compiler** (GCC 12+, Clang 15+, or MSVC 2022+)
+- **C++20 compatible compiler** (GCC 11+, Clang 12+, or MSVC 2022+)
 - **CMake 3.25+**
 - **libfmt**: For advanced string formatting
 - **libicu**: For Unicode and UTF-8 handling
@@ -253,7 +253,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 **Project Sponsors**: See [SPONSORS.md](SPONSORS.md) for our amazing sponsors who make this project possible.
 
 **Quick Start for Contributors:**
-1. Follow modern C++ best practices (C++23 features encouraged)
+1. Follow modern C++ best practices (C++20 features encouraged)
 2. Maintain API compatibility with the original Go version
 3. Add comprehensive tests for new features  
 4. Document public interfaces with examples

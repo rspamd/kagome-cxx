@@ -104,32 +104,6 @@
             "version": "${{ inputs.version }}"
          }
       },
-      "debian-bullseye-build-ARM64": {
-         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'debian-bullseye'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'ARM64'))) }}",
-         "uses": "./.github/workflows/build_packages.yml",
-         "with": {
-            "asan": "${{ inputs.asan }}",
-            "branch": "${{ inputs.branch }}",
-            "experimental": "${{ inputs.experimental }}",
-            "name": "debian-bullseye",
-            "platform": "ARM64",
-            "repo": "${{ inputs.repo }}",
-            "version": "${{ inputs.version }}"
-         }
-      },
-      "debian-bullseye-build-X64": {
-         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'debian-bullseye'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'X64'))) }}",
-         "uses": "./.github/workflows/build_packages.yml",
-         "with": {
-            "asan": "${{ inputs.asan }}",
-            "branch": "${{ inputs.branch }}",
-            "experimental": "${{ inputs.experimental }}",
-            "name": "debian-bullseye",
-            "platform": "X64",
-            "repo": "${{ inputs.repo }}",
-            "version": "${{ inputs.version }}"
-         }
-      },
       "debian-trixie-build-ARM64": {
          "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'debian-trixie'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'ARM64'))) }}",
          "uses": "./.github/workflows/build_packages.yml",

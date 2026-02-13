@@ -1,5 +1,5 @@
 Name:           kagome-cpp
-Version:        1.0.1
+Version:        1.0.2
 Release:        1%{?dist}
 Summary:        Modern C++ implementation of Japanese morphological analyzer
 
@@ -163,5 +163,6 @@ exit ${ctest_result:-0}
 
 
 %changelog
-* Thu Dev 18 2025 Kagome C++ Team <vsevolod@rspamd.com> - 1.0.1-1
-- Initial RPM release
+* Thu Feb 13 2025 Kagome C++ Team <vsevolod@rspamd.com> - 1.0.2-1
+- Fix stemmed flag propagation in tokenizer
+- Update to version 1.0.2

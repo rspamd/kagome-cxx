@@ -32,7 +32,7 @@ jobs:
             compiler: { name: "Clang 15", cc: clang-15, cxx: clang++-15 }
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Install dependencies (Ubuntu)
       run: |
@@ -79,7 +79,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Install dependencies (macOS)
       run: |
@@ -111,7 +111,7 @@ jobs:
         sanitizer: [address, thread, undefined]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Install dependencies
       run: |
@@ -151,7 +151,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Install dependencies
       run: |
@@ -208,7 +208,7 @@ jobs:
     needs: [build-linux]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Install build dependencies
       run: |

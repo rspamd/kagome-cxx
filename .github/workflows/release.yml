@@ -17,7 +17,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Extract version
       id: version
@@ -100,7 +100,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Extract version
       id: version
@@ -172,7 +172,7 @@ jobs:
             cmake_flags: "-DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Extract version
       id: version

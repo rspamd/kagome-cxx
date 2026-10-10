@@ -155,6 +155,32 @@
             "repo": "${{ inputs.repo }}",
             "version": "${{ inputs.version }}"
          }
+      },
+      "ubuntu-resolute-build-ARM64": {
+         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'ubuntu-resolute'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'ARM64'))) }}",
+         "uses": "./.github/workflows/build_packages.yml",
+         "with": {
+            "asan": "${{ inputs.asan }}",
+            "branch": "${{ inputs.branch }}",
+            "experimental": "${{ inputs.experimental }}",
+            "name": "ubuntu-resolute",
+            "platform": "ARM64",
+            "repo": "${{ inputs.repo }}",
+            "version": "${{ inputs.version }}"
+         }
+      },
+      "ubuntu-resolute-build-X64": {
+         "if": "${{ (inputs.distributions == '' || contains(format(',{0},', inputs.distributions), format(',{0},', 'ubuntu-resolute'))) && (inputs.architectures == '' || contains(format(',{0},', inputs.architectures), format(',{0},', 'X64'))) }}",
+         "uses": "./.github/workflows/build_packages.yml",
+         "with": {
+            "asan": "${{ inputs.asan }}",
+            "branch": "${{ inputs.branch }}",
+            "experimental": "${{ inputs.experimental }}",
+            "name": "ubuntu-resolute",
+            "platform": "X64",
+            "repo": "${{ inputs.repo }}",
+            "version": "${{ inputs.version }}"
+         }
       }
    },
    "name": "build",
